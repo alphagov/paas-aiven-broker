@@ -3,10 +3,21 @@ package broker
 import (
 	"context"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/brokerapi"
 )
 
-type Broker struct{}
+type Broker struct {
+	Config Config
+	Logger lager.Logger
+}
+
+func New(config Config, logger lager.Logger) *Broker {
+	return &Broker{
+		Config: config,
+		Logger: logger,
+	}
+}
 
 func (b *Broker) Services(ctx context.Context) []brokerapi.Service {
 	return []brokerapi.Service{}
