@@ -69,12 +69,24 @@ var _ = Describe("Broker", func() {
 			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
 		})
 
-		It("errors if the plan config cannot be retrieved", func() {
-			b := New(Config{}, &fakes.FakeProvider{}, lager.NewLogger("broker"))
+		It("errors if the service is not in the catalog", func() {
+			config := validConfig
+			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
+			b := New(config, &fakes.FakeProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Provision(context.Background(), "instanceid", validProvisionDetails, true)
 
-			Expect(err).To(MatchError("service plan plan1: no plan found"))
+			Expect(err).To(MatchError("Error: service service1 not found in the catalog"))
+		})
+
+		It("errors if the plan is not in the catalog", func() {
+			config := validConfig
+			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
+			b := New(config, &fakes.FakeProvider{}, lager.NewLogger("broker"))
+
+			_, err := b.Provision(context.Background(), "instanceid", validProvisionDetails, true)
+
+			Expect(err).To(MatchError("Error: plan plan1 not found in service service1"))
 		})
 	})
 })

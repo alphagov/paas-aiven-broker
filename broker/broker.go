@@ -42,6 +42,16 @@ func (b *Broker) Provision(
 		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrAsyncRequired
 	}
 
+	service, err := findServiceByID(b.config.Catalog, details.ServiceID)
+	if err != nil {
+		return brokerapi.ProvisionedServiceSpec{}, err
+	}
+
+	_, err = findPlanByID(service, details.PlanID)
+	if err != nil {
+		return brokerapi.ProvisionedServiceSpec{}, err
+	}
+
 	return brokerapi.ProvisionedServiceSpec{}, nil
 }
 

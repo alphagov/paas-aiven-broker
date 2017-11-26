@@ -15,34 +15,6 @@ type Config struct {
 	ProviderData ProviderData
 }
 
-type API struct {
-	BasicAuthUsername string `json:"basic_auth_username"`
-	BasicAuthPassword string `json:"basic_auth_password"`
-}
-
-type Catalog struct {
-	Catalog brokerapi.CatalogResponse `json:"catalog"`
-}
-
-type ProviderData struct {
-	ProviderCatalog ProviderCatalog `json:"catalog"`
-}
-
-type ProviderCatalog struct {
-	Services []ProviderService `json:"services"`
-}
-
-type ProviderService struct {
-	ID             string          `json:"id"`
-	ProviderConfig json.RawMessage `json:"provider_config"`
-	Plans          []ProviderPlan  `json:"plans"`
-}
-
-type ProviderPlan struct {
-	ID             string          `json:"id"`
-	ProviderConfig json.RawMessage `json:"provider_config"`
-}
-
 func NewConfig(source io.Reader) (Config, error) {
 	config := Config{}
 	bytes, err := ioutil.ReadAll(source)
@@ -80,4 +52,50 @@ func (c Config) Validate() error {
 		return fmt.Errorf("Config error: basic auth password required")
 	}
 	return nil
+}
+
+type API struct {
+	BasicAuthUsername string `json:"basic_auth_username"`
+	BasicAuthPassword string `json:"basic_auth_password"`
+}
+
+type Catalog struct {
+	Catalog brokerapi.CatalogResponse `json:"catalog"`
+}
+
+type ProviderData struct {
+	ProviderCatalog ProviderCatalog `json:"catalog"`
+}
+
+type ProviderCatalog struct {
+	Services []ProviderService `json:"services"`
+}
+
+type ProviderService struct {
+	ID             string          `json:"id"`
+	ProviderConfig json.RawMessage `json:"provider_config"`
+	Plans          []ProviderPlan  `json:"plans"`
+}
+
+type ProviderPlan struct {
+	ID             string          `json:"id"`
+	ProviderConfig json.RawMessage `json:"provider_config"`
+}
+
+func findServiceByID(catalog Catalog, serviceID string) (brokerapi.Service, error) {
+	for _, service := range catalog.Catalog.Services {
+		if service.ID == serviceID {
+			return service, nil
+		}
+	}
+	return brokerapi.Service{}, fmt.Errorf("Error: service %s not found in the catalog", serviceID)
+}
+
+func findPlanByID(service brokerapi.Service, planID string) (brokerapi.ServicePlan, error) {
+	for _, plan := range service.Plans {
+		if plan.ID == planID {
+			return plan, nil
+		}
+	}
+	return brokerapi.ServicePlan{}, fmt.Errorf("Error: plan %s not found in service %s", planID, service.ID)
 }
