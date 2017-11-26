@@ -10,9 +10,9 @@ import (
 )
 
 type Config struct {
-	API          API
-	Catalog      Catalog
-	ProviderData ProviderData
+	API      API
+	Catalog  Catalog
+	Provider Provider
 }
 
 func NewConfig(source io.Reader) (Config, error) {
@@ -32,15 +32,15 @@ func NewConfig(source io.Reader) (Config, error) {
 		return config, err
 	}
 
-	providerData := ProviderData{}
-	if err = json.Unmarshal(bytes, &providerData); err != nil {
+	provider := Provider{}
+	if err = json.Unmarshal(bytes, &provider); err != nil {
 		return config, err
 	}
 
 	return Config{
-		API:          api,
-		Catalog:      catalog,
-		ProviderData: providerData,
+		API:      api,
+		Catalog:  catalog,
+		Provider: provider,
 	}, nil
 }
 
@@ -63,7 +63,7 @@ type Catalog struct {
 	Catalog brokerapi.CatalogResponse `json:"catalog"`
 }
 
-type ProviderData struct {
+type Provider struct {
 	ProviderCatalog ProviderCatalog `json:"catalog"`
 }
 
