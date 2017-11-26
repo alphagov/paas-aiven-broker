@@ -64,12 +64,22 @@ func (b *Broker) Provision(
 	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
 	defer cancelFunc()
 
-	_, _, err = b.Provider.Provision(providerCtx, provisionData)
+	dashboardURL, operationData, err := b.Provider.Provision(providerCtx, provisionData)
 	if err != nil {
 		return brokerapi.ProvisionedServiceSpec{}, err
 	}
 
-	return brokerapi.ProvisionedServiceSpec{}, nil
+	b.logger.Debug("provision-success", lager.Data{
+		"instance-id":   instanceID,
+		"details":       details,
+		"async-allowed": asyncAllowed,
+	})
+
+	return brokerapi.ProvisionedServiceSpec{
+		IsAsync:       true,
+		DashboardURL:  dashboardURL,
+		OperationData: operationData,
+	}, nil
 }
 
 func (b *Broker) Deprovision(
