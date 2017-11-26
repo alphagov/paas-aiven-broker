@@ -46,15 +46,13 @@ var _ = Describe("Config", func() {
 		config.API.BasicAuthUsername = ""
 
 		err = config.Validate()
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Config error: basic auth username required"))
+		Expect(err).To(MatchError("Config error: basic auth username required"))
 	})
 
 	It("requires a basic auth password", func() {
 		config.API.BasicAuthPassword = ""
 
 		err = config.Validate()
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("Config error: basic auth password required"))
+		Expect(err).To(MatchError("Config error: basic auth password required"))
 	})
 })
