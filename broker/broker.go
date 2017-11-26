@@ -47,7 +47,19 @@ func (b *Broker) Provision(
 		return brokerapi.ProvisionedServiceSpec{}, err
 	}
 
-	_, err = findPlanByID(service, details.PlanID)
+	plan, err := findPlanByID(service, details.PlanID)
+	if err != nil {
+		return brokerapi.ProvisionedServiceSpec{}, err
+	}
+
+	provisionData := provider.ProvisionData{
+		InstanceID:      instanceID,
+		Details:         details,
+		Service:         service,
+		Plan:            plan,
+		ProviderCatalog: b.config.Provider.Catalog,
+	}
+	_, _, err = b.Provider.Provision(ctx, provisionData)
 	if err != nil {
 		return brokerapi.ProvisionedServiceSpec{}, err
 	}

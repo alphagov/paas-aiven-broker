@@ -36,7 +36,7 @@ var _ = Describe("Broker API", func() {
 		config, err = NewConfig(strings.NewReader(validConfigSource))
 		Expect(err).NotTo(HaveOccurred())
 		logger = lager.NewLogger("broker-api")
-		broker = New(config, &fakes.FakeProvider{}, logger)
+		broker = New(config, &fakes.FakeServiceProvider{}, logger)
 		brokerAPI = NewAPI(broker, logger, config)
 
 		credentials = brokerapi.BrokerCredentials{

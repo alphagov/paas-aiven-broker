@@ -53,7 +53,7 @@ var _ = Describe("Broker", func() {
 			logger := lager.NewLogger("broker")
 			log := gbytes.NewBuffer()
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
-			b := New(validConfig, &fakes.FakeProvider{}, logger)
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
 			b.Provision(context.Background(), "instanceid", validProvisionDetails, true)
 
@@ -61,7 +61,7 @@ var _ = Describe("Broker", func() {
 		})
 
 		It("errors if async isn't allowed", func() {
-			b := New(validConfig, &fakes.FakeProvider{}, lager.NewLogger("broker"))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 			asyncAllowed := false
 
 			_, err := b.Provision(context.Background(), "instanceid", validProvisionDetails, asyncAllowed)
@@ -72,7 +72,7 @@ var _ = Describe("Broker", func() {
 		It("errors if the service is not in the catalog", func() {
 			config := validConfig
 			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
-			b := New(config, &fakes.FakeProvider{}, lager.NewLogger("broker"))
+			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Provision(context.Background(), "instanceid", validProvisionDetails, true)
 
@@ -82,7 +82,7 @@ var _ = Describe("Broker", func() {
 		It("errors if the plan is not in the catalog", func() {
 			config := validConfig
 			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
-			b := New(config, &fakes.FakeProvider{}, lager.NewLogger("broker"))
+			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Provision(context.Background(), "instanceid", validProvisionDetails, true)
 

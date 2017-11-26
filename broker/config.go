@@ -6,13 +6,14 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/henrytk/broker-skeleton/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 
 type Config struct {
 	API      API
 	Catalog  Catalog
-	Provider Provider
+	Provider provider.Provider
 }
 
 func NewConfig(source io.Reader) (Config, error) {
@@ -32,7 +33,7 @@ func NewConfig(source io.Reader) (Config, error) {
 		return config, err
 	}
 
-	provider := Provider{}
+	provider := provider.Provider{}
 	if err = json.Unmarshal(bytes, &provider); err != nil {
 		return config, err
 	}
@@ -61,25 +62,6 @@ type API struct {
 
 type Catalog struct {
 	Catalog brokerapi.CatalogResponse `json:"catalog"`
-}
-
-type Provider struct {
-	Catalog ProviderCatalog `json:"catalog"`
-}
-
-type ProviderCatalog struct {
-	Services []ProviderService `json:"services"`
-}
-
-type ProviderService struct {
-	ID             string          `json:"id"`
-	ProviderConfig json.RawMessage `json:"provider_config"`
-	Plans          []ProviderPlan  `json:"plans"`
-}
-
-type ProviderPlan struct {
-	ID             string          `json:"id"`
-	ProviderConfig json.RawMessage `json:"provider_config"`
 }
 
 func findServiceByID(catalog Catalog, serviceID string) (brokerapi.Service, error) {
