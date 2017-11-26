@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"time"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/henrytk/broker-skeleton/provider"
@@ -59,7 +60,11 @@ func (b *Broker) Provision(
 		Plan:            plan,
 		ProviderCatalog: b.config.Provider.Catalog,
 	}
-	_, _, err = b.Provider.Provision(ctx, provisionData)
+
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	_, _, err = b.Provider.Provision(providerCtx, provisionData)
 	if err != nil {
 		return brokerapi.ProvisionedServiceSpec{}, err
 	}

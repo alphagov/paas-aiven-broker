@@ -88,5 +88,19 @@ var _ = Describe("Broker", func() {
 
 			Expect(err).To(MatchError("Error: plan plan1 not found in service service1"))
 		})
+
+		It("sets a deadline by which the provision request should complete", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Provision(context.Background(), "instanceid", validProvisionDetails, true)
+
+			Expect(fakeProvider.ProvisionCallCount()).To(Equal(1))
+			receivedContext, _ := fakeProvider.ProvisionArgsForCall(0)
+
+			_, hasDeadline := receivedContext.Deadline()
+
+			Expect(hasDeadline).To(BeTrue())
+		})
 	})
 })
