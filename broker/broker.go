@@ -4,18 +4,21 @@ import (
 	"context"
 
 	"code.cloudfoundry.org/lager"
+	"github.com/henrytk/broker-skeleton/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 
 type Broker struct {
-	Config Config
-	Logger lager.Logger
+	config   Config
+	Provider provider.ServiceProvider
+	logger   lager.Logger
 }
 
-func New(config Config, logger lager.Logger) *Broker {
+func New(config Config, serviceProvider provider.ServiceProvider, logger lager.Logger) *Broker {
 	return &Broker{
-		Config: config,
-		Logger: logger,
+		config:   config,
+		Provider: serviceProvider,
+		logger:   logger,
 	}
 }
 
@@ -29,6 +32,16 @@ func (b *Broker) Provision(
 	details brokerapi.ProvisionDetails,
 	asyncAllowed bool,
 ) (brokerapi.ProvisionedServiceSpec, error) {
+	b.logger.Debug("provision-start", lager.Data{
+		"instance-id":   instanceID,
+		"details":       details,
+		"async-allowed": asyncAllowed,
+	})
+
+	if !asyncAllowed {
+		return brokerapi.ProvisionedServiceSpec{}, brokerapi.ErrAsyncRequired
+	}
+
 	return brokerapi.ProvisionedServiceSpec{}, nil
 }
 

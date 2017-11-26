@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	. "github.com/henrytk/broker-skeleton/broker"
+	"github.com/henrytk/broker-skeleton/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	. "github.com/onsi/ginkgo"
@@ -35,7 +36,7 @@ var _ = Describe("Broker API", func() {
 		config, err = NewConfig(strings.NewReader(validConfigSource))
 		Expect(err).NotTo(HaveOccurred())
 		logger = lager.NewLogger("broker-api")
-		broker = New(config, logger)
+		broker = New(config, &fakes.FakeProvider{}, logger)
 		brokerAPI = NewAPI(broker, logger, config)
 
 		credentials = brokerapi.BrokerCredentials{

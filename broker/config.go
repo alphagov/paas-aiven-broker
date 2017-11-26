@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"github.com/pivotal-cf/brokerapi"
 )
 
 type Config struct {
-	BasicAuthUsername string `json:"basic_auth_username"`
-	BasicAuthPassword string `json:"basic_auth_password"`
+	BasicAuthUsername string                    `json:"basic_auth_username"`
+	BasicAuthPassword string                    `json:"basic_auth_password"`
+	Catalog           brokerapi.CatalogResponse `json:"catalog"`
 }
 
 func NewConfig(source io.Reader) (Config, error) {
