@@ -64,7 +64,7 @@ type Catalog struct {
 }
 
 type Provider struct {
-	ProviderCatalog ProviderCatalog `json:"catalog"`
+	Catalog ProviderCatalog `json:"catalog"`
 }
 
 type ProviderCatalog struct {
