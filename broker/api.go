@@ -9,8 +9,8 @@ import (
 
 func NewAPI(broker brokerapi.ServiceBroker, logger lager.Logger, config Config) http.Handler {
 	credentials := brokerapi.BrokerCredentials{
-		Username: config.BasicAuthUsername,
-		Password: config.BasicAuthPassword,
+		Username: config.API.BasicAuthUsername,
+		Password: config.API.BasicAuthPassword,
 	}
 
 	brokerAPI := brokerapi.New(broker, logger, credentials)

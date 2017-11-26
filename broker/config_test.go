@@ -16,7 +16,23 @@ var _ = Describe("Config", func() {
 		validConfigSource = `
 			{
 				"basic_auth_username":"admin",
-				"basic_auth_password":"1234"
+				"basic_auth_password":"1234",
+				"catalog": {
+					"services": [
+						{
+							"id": "1",
+							"provider_config": {
+								"provider_specific_service_config": "blah"
+							},
+							"plans": [
+								{
+									"id": "1",
+									"provider_specific_plan_config": "blah"
+								}
+							]
+						}
+					]
+				}
 			}
 		`
 	)
@@ -27,7 +43,7 @@ var _ = Describe("Config", func() {
 	})
 
 	It("requires a basic auth username", func() {
-		config.BasicAuthUsername = ""
+		config.API.BasicAuthUsername = ""
 
 		err = config.Validate()
 		Expect(err).To(HaveOccurred())
@@ -35,7 +51,7 @@ var _ = Describe("Config", func() {
 	})
 
 	It("requires a basic auth password", func() {
-		config.BasicAuthPassword = ""
+		config.API.BasicAuthPassword = ""
 
 		err = config.Validate()
 		Expect(err).To(HaveOccurred())

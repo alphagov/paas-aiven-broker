@@ -40,8 +40,8 @@ var _ = Describe("Broker API", func() {
 		brokerAPI = NewAPI(broker, logger, config)
 
 		credentials = brokerapi.BrokerCredentials{
-			Username: config.BasicAuthUsername,
-			Password: config.BasicAuthPassword,
+			Username: config.API.BasicAuthUsername,
+			Password: config.API.BasicAuthPassword,
 		}
 		brokerClient = BrokerClient{credentials}
 	})

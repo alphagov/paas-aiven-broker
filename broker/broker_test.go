@@ -18,15 +18,17 @@ var _ = Describe("Broker", func() {
 
 	BeforeEach(func() {
 		validConfig = Config{
-			Catalog: brokerapi.CatalogResponse{
-				Services: []brokerapi.Service{
-					brokerapi.Service{
-						ID:   "service1",
-						Name: "service1",
-						Plans: []brokerapi.ServicePlan{
-							brokerapi.ServicePlan{
-								ID:   "plan1",
-								Name: "plan1",
+			Catalog: Catalog{
+				brokerapi.CatalogResponse{
+					Services: []brokerapi.Service{
+						brokerapi.Service{
+							ID:   "service1",
+							Name: "service1",
+							Plans: []brokerapi.ServicePlan{
+								brokerapi.ServicePlan{
+									ID:   "plan1",
+									Name: "plan1",
+								},
 							},
 						},
 					},
