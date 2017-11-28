@@ -24,7 +24,7 @@ func New(config Config, serviceProvider provider.ServiceProvider, logger lager.L
 }
 
 func (b *Broker) Services(ctx context.Context) []brokerapi.Service {
-	return []brokerapi.Service{}
+	return b.config.Catalog.Catalog.Services
 }
 
 func (b *Broker) Provision(
