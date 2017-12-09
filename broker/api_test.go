@@ -196,6 +196,65 @@ var _ = Describe("Broker API", func() {
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
+
+	Describe("Bind", func() {
+		var (
+			bindingID string
+			appGUID   string
+		)
+
+		BeforeEach(func() {
+			bindingID = "bindingID"
+			appGUID = "appGUID"
+		})
+
+		It("creates a binding", func() {
+			fakeProvider.BindReturns(brokerapi.Binding{Credentials: "secrets"}, nil)
+			res := brokerTester.Put(
+				fmt.Sprintf(
+					"/v2/service_instances/%s/service_bindings/%s",
+					instanceID,
+					bindingID,
+				),
+				strings.NewReader(fmt.Sprintf(`{
+						"service_id": "service1",
+						"plan_id": "plan1",
+						"app_guid": "%s"
+					}`, appGUID)),
+				url.Values{},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusCreated))
+
+			binding := brokerapi.Binding{}
+			err := json.Unmarshal(res.Body.Bytes(), &binding)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedBinding := brokerapi.Binding{
+				Credentials: "secrets",
+			}
+			Expect(binding).To(Equal(expectedBinding))
+		})
+
+		It("responds with an internal server error if the provider errors", func() {
+			fakeProvider.BindReturns(brokerapi.Binding{}, errors.New("some binding error"))
+			res := brokerTester.Put(
+				fmt.Sprintf(
+					"/v2/service_instances/%s/service_bindings/%s",
+					instanceID,
+					bindingID,
+				),
+				strings.NewReader(fmt.Sprintf(`{
+						"service_id": "service1",
+						"plan_id": "plan1",
+						"app_guid": "%s"
+					}`, appGUID)),
+				url.Values{},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
 })
 
 type BrokerTester struct {

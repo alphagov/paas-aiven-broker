@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/henrytk/broker-skeleton/provider"
+	"github.com/pivotal-cf/brokerapi"
 )
 
 type FakeServiceProvider struct {
@@ -37,6 +38,20 @@ type FakeServiceProvider struct {
 	}
 	deprovisionReturnsOnCall map[int]struct {
 		result1 string
+		result2 error
+	}
+	BindStub        func(context.Context, provider.BindData) (binding brokerapi.Binding, err error)
+	bindMutex       sync.RWMutex
+	bindArgsForCall []struct {
+		arg1 context.Context
+		arg2 provider.BindData
+	}
+	bindReturns struct {
+		result1 brokerapi.Binding
+		result2 error
+	}
+	bindReturnsOnCall map[int]struct {
+		result1 brokerapi.Binding
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -150,6 +165,58 @@ func (fake *FakeServiceProvider) DeprovisionReturnsOnCall(i int, result1 string,
 	}{result1, result2}
 }
 
+func (fake *FakeServiceProvider) Bind(arg1 context.Context, arg2 provider.BindData) (binding brokerapi.Binding, err error) {
+	fake.bindMutex.Lock()
+	ret, specificReturn := fake.bindReturnsOnCall[len(fake.bindArgsForCall)]
+	fake.bindArgsForCall = append(fake.bindArgsForCall, struct {
+		arg1 context.Context
+		arg2 provider.BindData
+	}{arg1, arg2})
+	fake.recordInvocation("Bind", []interface{}{arg1, arg2})
+	fake.bindMutex.Unlock()
+	if fake.BindStub != nil {
+		return fake.BindStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.bindReturns.result1, fake.bindReturns.result2
+}
+
+func (fake *FakeServiceProvider) BindCallCount() int {
+	fake.bindMutex.RLock()
+	defer fake.bindMutex.RUnlock()
+	return len(fake.bindArgsForCall)
+}
+
+func (fake *FakeServiceProvider) BindArgsForCall(i int) (context.Context, provider.BindData) {
+	fake.bindMutex.RLock()
+	defer fake.bindMutex.RUnlock()
+	return fake.bindArgsForCall[i].arg1, fake.bindArgsForCall[i].arg2
+}
+
+func (fake *FakeServiceProvider) BindReturns(result1 brokerapi.Binding, result2 error) {
+	fake.BindStub = nil
+	fake.bindReturns = struct {
+		result1 brokerapi.Binding
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeServiceProvider) BindReturnsOnCall(i int, result1 brokerapi.Binding, result2 error) {
+	fake.BindStub = nil
+	if fake.bindReturnsOnCall == nil {
+		fake.bindReturnsOnCall = make(map[int]struct {
+			result1 brokerapi.Binding
+			result2 error
+		})
+	}
+	fake.bindReturnsOnCall[i] = struct {
+		result1 brokerapi.Binding
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -157,6 +224,8 @@ func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	defer fake.provisionMutex.RUnlock()
 	fake.deprovisionMutex.RLock()
 	defer fake.deprovisionMutex.RUnlock()
+	fake.bindMutex.RLock()
+	defer fake.bindMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

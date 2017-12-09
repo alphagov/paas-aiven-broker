@@ -280,4 +280,105 @@ var _ = Describe("Broker", func() {
 				}))
 		})
 	})
+
+	Describe("Bind", func() {
+		var (
+			bindingID        string
+			appGUID          string
+			bindResource     *brokerapi.BindResource
+			validBindDetails brokerapi.BindDetails
+		)
+
+		BeforeEach(func() {
+			bindingID = "bindingID"
+			appGUID = "appGUID"
+			bindResource = &brokerapi.BindResource{
+				AppGuid: appGUID,
+			}
+			validBindDetails = brokerapi.BindDetails{
+				AppGUID:      appGUID,
+				PlanID:       plan1.ID,
+				ServiceID:    service1.ID,
+				BindResource: bindResource,
+			}
+		})
+
+		It("logs a debug message when binding begins", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+
+			Expect(log).To(gbytes.Say("binding-start"))
+		})
+
+		It("sets a deadline by which the binding request should complete", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+
+			Expect(fakeProvider.BindCallCount()).To(Equal(1))
+			receivedContext, _ := fakeProvider.BindArgsForCall(0)
+
+			_, hasDeadline := receivedContext.Deadline()
+
+			Expect(hasDeadline).To(BeTrue())
+		})
+
+		It("passes the correct data to the Provider", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+
+			Expect(fakeProvider.BindCallCount()).To(Equal(1))
+			_, bindData := fakeProvider.BindArgsForCall(0)
+
+			expectedBindData := provider.BindData{
+				InstanceID:      instanceID,
+				BindingID:       bindingID,
+				Details:         validBindDetails,
+				ProviderCatalog: providerCatalog,
+			}
+
+			Expect(bindData).To(Equal(expectedBindData))
+		})
+
+		It("errors if binding fails", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.BindReturns(brokerapi.Binding{}, errors.New("ERROR BINDING"))
+
+			_, err := b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+
+			Expect(err).To(MatchError("ERROR BINDING"))
+		})
+
+		It("logs a debug message when binding succeeds", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+
+			Expect(log).To(gbytes.Say("binding-success"))
+		})
+
+		It("returns the binding", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.BindReturns(brokerapi.Binding{
+				Credentials: "some-value-of-interface{}-type",
+			}, nil)
+
+			Expect(b.Bind(context.Background(), instanceID, bindingID, validBindDetails)).
+				To(Equal(brokerapi.Binding{
+					Credentials: "some-value-of-interface{}-type",
+				}))
+		})
+	})
 })

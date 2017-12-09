@@ -40,3 +40,10 @@ type DeprovisionData struct {
 	Plan            brokerapi.ServicePlan
 	ProviderCatalog ProviderCatalog
 }
+
+type BindData struct {
+	InstanceID      string
+	BindingID       string
+	Details         brokerapi.BindDetails
+	ProviderCatalog ProviderCatalog
+}

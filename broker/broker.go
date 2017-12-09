@@ -130,7 +130,34 @@ func (b *Broker) Bind(
 	bindingID string,
 	details brokerapi.BindDetails,
 ) (brokerapi.Binding, error) {
-	return brokerapi.Binding{}, nil
+	b.logger.Debug("binding-start", lager.Data{
+		"instance-id": instanceID,
+		"binding-id":  bindingID,
+		"details":     details,
+	})
+
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	bindData := provider.BindData{
+		InstanceID:      instanceID,
+		BindingID:       bindingID,
+		Details:         details,
+		ProviderCatalog: b.config.Provider.Catalog,
+	}
+
+	binding, err := b.Provider.Bind(providerCtx, bindData)
+	if err != nil {
+		return brokerapi.Binding{}, err
+	}
+
+	b.logger.Debug("binding-success", lager.Data{
+		"instance-id": instanceID,
+		"binding-id":  bindingID,
+		"details":     details,
+	})
+
+	return binding, nil
 }
 
 func (b *Broker) Unbind(
