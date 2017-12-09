@@ -54,6 +54,18 @@ type FakeServiceProvider struct {
 		result1 brokerapi.Binding
 		result2 error
 	}
+	UnbindStub        func(context.Context, provider.UnbindData) (err error)
+	unbindMutex       sync.RWMutex
+	unbindArgsForCall []struct {
+		arg1 context.Context
+		arg2 provider.UnbindData
+	}
+	unbindReturns struct {
+		result1 error
+	}
+	unbindReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -217,6 +229,55 @@ func (fake *FakeServiceProvider) BindReturnsOnCall(i int, result1 brokerapi.Bind
 	}{result1, result2}
 }
 
+func (fake *FakeServiceProvider) Unbind(arg1 context.Context, arg2 provider.UnbindData) (err error) {
+	fake.unbindMutex.Lock()
+	ret, specificReturn := fake.unbindReturnsOnCall[len(fake.unbindArgsForCall)]
+	fake.unbindArgsForCall = append(fake.unbindArgsForCall, struct {
+		arg1 context.Context
+		arg2 provider.UnbindData
+	}{arg1, arg2})
+	fake.recordInvocation("Unbind", []interface{}{arg1, arg2})
+	fake.unbindMutex.Unlock()
+	if fake.UnbindStub != nil {
+		return fake.UnbindStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.unbindReturns.result1
+}
+
+func (fake *FakeServiceProvider) UnbindCallCount() int {
+	fake.unbindMutex.RLock()
+	defer fake.unbindMutex.RUnlock()
+	return len(fake.unbindArgsForCall)
+}
+
+func (fake *FakeServiceProvider) UnbindArgsForCall(i int) (context.Context, provider.UnbindData) {
+	fake.unbindMutex.RLock()
+	defer fake.unbindMutex.RUnlock()
+	return fake.unbindArgsForCall[i].arg1, fake.unbindArgsForCall[i].arg2
+}
+
+func (fake *FakeServiceProvider) UnbindReturns(result1 error) {
+	fake.UnbindStub = nil
+	fake.unbindReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeServiceProvider) UnbindReturnsOnCall(i int, result1 error) {
+	fake.UnbindStub = nil
+	if fake.unbindReturnsOnCall == nil {
+		fake.unbindReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.unbindReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -226,6 +287,8 @@ func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	defer fake.deprovisionMutex.RUnlock()
 	fake.bindMutex.RLock()
 	defer fake.bindMutex.RUnlock()
+	fake.unbindMutex.RLock()
+	defer fake.unbindMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

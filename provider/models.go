@@ -47,3 +47,10 @@ type BindData struct {
 	Details         brokerapi.BindDetails
 	ProviderCatalog ProviderCatalog
 }
+
+type UnbindData struct {
+	InstanceID      string
+	BindingID       string
+	Details         brokerapi.UnbindDetails
+	ProviderCatalog ProviderCatalog
+}

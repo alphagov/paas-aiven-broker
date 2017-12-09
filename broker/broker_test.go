@@ -381,4 +381,84 @@ var _ = Describe("Broker", func() {
 				}))
 		})
 	})
+
+	Describe("Unbind", func() {
+		var (
+			bindingID          string
+			validUnbindDetails brokerapi.UnbindDetails
+		)
+
+		BeforeEach(func() {
+			bindingID = "bindingID"
+			validUnbindDetails = brokerapi.UnbindDetails{
+				PlanID:    plan1.ID,
+				ServiceID: service1.ID,
+			}
+		})
+
+		It("logs a debug message when unbinding begins", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+
+			Expect(log).To(gbytes.Say("unbinding-start"))
+		})
+
+		It("sets a deadline by which the unbinding request should complete", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+
+			Expect(fakeProvider.UnbindCallCount()).To(Equal(1))
+			receivedContext, _ := fakeProvider.UnbindArgsForCall(0)
+
+			_, hasDeadline := receivedContext.Deadline()
+
+			Expect(hasDeadline).To(BeTrue())
+		})
+
+		It("passes the correct data to the Provider", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+
+			Expect(fakeProvider.UnbindCallCount()).To(Equal(1))
+			_, unbindData := fakeProvider.UnbindArgsForCall(0)
+
+			expectedUnbindData := provider.UnbindData{
+				InstanceID:      instanceID,
+				BindingID:       bindingID,
+				Details:         validUnbindDetails,
+				ProviderCatalog: providerCatalog,
+			}
+
+			Expect(unbindData).To(Equal(expectedUnbindData))
+		})
+
+		It("errors if unbinding fails", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.UnbindReturns(errors.New("ERROR UNBINDING"))
+
+			err := b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+
+			Expect(err).To(MatchError("ERROR UNBINDING"))
+		})
+
+		It("logs a debug message when unbinding succeeds", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+
+			Expect(log).To(gbytes.Say("unbinding-success"))
+		})
+	})
 })

@@ -166,6 +166,33 @@ func (b *Broker) Unbind(
 	bindingID string,
 	details brokerapi.UnbindDetails,
 ) error {
+	b.logger.Debug("unbinding-start", lager.Data{
+		"instance-id": instanceID,
+		"binding-id":  bindingID,
+		"details":     details,
+	})
+
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	unbindData := provider.UnbindData{
+		InstanceID:      instanceID,
+		BindingID:       bindingID,
+		Details:         details,
+		ProviderCatalog: b.config.Provider.Catalog,
+	}
+
+	err := b.Provider.Unbind(providerCtx, unbindData)
+	if err != nil {
+		return err
+	}
+
+	b.logger.Debug("unbinding-success", lager.Data{
+		"instance-id": instanceID,
+		"binding-id":  bindingID,
+		"details":     details,
+	})
+
 	return nil
 }
 

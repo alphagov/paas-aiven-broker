@@ -255,6 +255,49 @@ var _ = Describe("Broker API", func() {
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
+
+	Describe("Unbind", func() {
+		var bindingID string
+
+		BeforeEach(func() {
+			bindingID = "bindingID"
+		})
+
+		It("unbinds", func() {
+			res := brokerTester.Delete(
+				fmt.Sprintf(
+					"/v2/service_instances/%s/service_bindings/%s",
+					instanceID,
+					bindingID,
+				),
+				strings.NewReader(fmt.Sprintf(`{
+						"service_id": "service1",
+						"plan_id": "plan1"
+					}`)),
+				url.Values{},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusOK))
+		})
+
+		It("responds with an internal server error if the provider errors", func() {
+			fakeProvider.UnbindReturns(errors.New("some unbinding error"))
+			res := brokerTester.Delete(
+				fmt.Sprintf(
+					"/v2/service_instances/%s/service_bindings/%s",
+					instanceID,
+					bindingID,
+				),
+				strings.NewReader(fmt.Sprintf(`{
+						"service_id": "service1",
+						"plan_id": "plan1"
+					}`)),
+				url.Values{},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
 })
 
 type BrokerTester struct {
