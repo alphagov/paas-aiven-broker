@@ -184,4 +184,100 @@ var _ = Describe("Broker", func() {
 				}))
 		})
 	})
+
+	Describe("Deprovision", func() {
+		var validDeprovisionDetails brokerapi.DeprovisionDetails
+
+		BeforeEach(func() {
+			validDeprovisionDetails = brokerapi.DeprovisionDetails{
+				ServiceID: service1.ID,
+				PlanID:    plan1.ID,
+			}
+		})
+
+		It("logs a debug message when deprovision begins", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(log).To(gbytes.Say("deprovision-start"))
+		})
+
+		It("errors if async isn't allowed", func() {
+			b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+			asyncAllowed := false
+
+			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, asyncAllowed)
+
+			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
+		})
+
+		It("sets a deadline by which the deprovision request should complete", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(fakeProvider.DeprovisionCallCount()).To(Equal(1))
+			receivedContext, _ := fakeProvider.DeprovisionArgsForCall(0)
+
+			_, hasDeadline := receivedContext.Deadline()
+
+			Expect(hasDeadline).To(BeTrue())
+		})
+
+		It("passes the correct data to the Provider", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(fakeProvider.DeprovisionCallCount()).To(Equal(1))
+			_, deprovisionData := fakeProvider.DeprovisionArgsForCall(0)
+
+			expectedDeprovisionData := provider.DeprovisionData{
+				InstanceID:      instanceID,
+				Details:         validDeprovisionDetails,
+				ProviderCatalog: providerCatalog,
+			}
+
+			Expect(deprovisionData).To(Equal(expectedDeprovisionData))
+		})
+
+		It("errors if deprovisioning fails", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.DeprovisionReturns("", errors.New("ERROR DEPROVISIONING"))
+
+			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(err).To(MatchError("ERROR DEPROVISIONING"))
+		})
+
+		It("logs a debug message when deprovisioning succeeds", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(log).To(gbytes.Say("deprovision-success"))
+		})
+
+		It("returns the deprovisioned service spec", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.DeprovisionReturns("operation data", nil)
+
+			Expect(b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)).
+				To(Equal(brokerapi.DeprovisionServiceSpec{
+					IsAsync:       true,
+					OperationData: "operation data",
+				}))
+		})
+	})
 })

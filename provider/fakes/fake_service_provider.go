@@ -25,6 +25,20 @@ type FakeServiceProvider struct {
 		result2 string
 		result3 error
 	}
+	DeprovisionStub        func(context.Context, provider.DeprovisionData) (operationData string, err error)
+	deprovisionMutex       sync.RWMutex
+	deprovisionArgsForCall []struct {
+		arg1 context.Context
+		arg2 provider.DeprovisionData
+	}
+	deprovisionReturns struct {
+		result1 string
+		result2 error
+	}
+	deprovisionReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -84,11 +98,65 @@ func (fake *FakeServiceProvider) ProvisionReturnsOnCall(i int, result1 string, r
 	}{result1, result2, result3}
 }
 
+func (fake *FakeServiceProvider) Deprovision(arg1 context.Context, arg2 provider.DeprovisionData) (operationData string, err error) {
+	fake.deprovisionMutex.Lock()
+	ret, specificReturn := fake.deprovisionReturnsOnCall[len(fake.deprovisionArgsForCall)]
+	fake.deprovisionArgsForCall = append(fake.deprovisionArgsForCall, struct {
+		arg1 context.Context
+		arg2 provider.DeprovisionData
+	}{arg1, arg2})
+	fake.recordInvocation("Deprovision", []interface{}{arg1, arg2})
+	fake.deprovisionMutex.Unlock()
+	if fake.DeprovisionStub != nil {
+		return fake.DeprovisionStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.deprovisionReturns.result1, fake.deprovisionReturns.result2
+}
+
+func (fake *FakeServiceProvider) DeprovisionCallCount() int {
+	fake.deprovisionMutex.RLock()
+	defer fake.deprovisionMutex.RUnlock()
+	return len(fake.deprovisionArgsForCall)
+}
+
+func (fake *FakeServiceProvider) DeprovisionArgsForCall(i int) (context.Context, provider.DeprovisionData) {
+	fake.deprovisionMutex.RLock()
+	defer fake.deprovisionMutex.RUnlock()
+	return fake.deprovisionArgsForCall[i].arg1, fake.deprovisionArgsForCall[i].arg2
+}
+
+func (fake *FakeServiceProvider) DeprovisionReturns(result1 string, result2 error) {
+	fake.DeprovisionStub = nil
+	fake.deprovisionReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeServiceProvider) DeprovisionReturnsOnCall(i int, result1 string, result2 error) {
+	fake.DeprovisionStub = nil
+	if fake.deprovisionReturnsOnCall == nil {
+		fake.deprovisionReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.deprovisionReturnsOnCall[i] = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.provisionMutex.RLock()
 	defer fake.provisionMutex.RUnlock()
+	fake.deprovisionMutex.RLock()
+	defer fake.deprovisionMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

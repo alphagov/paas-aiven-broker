@@ -53,6 +53,9 @@ func (b *Broker) Provision(
 		return brokerapi.ProvisionedServiceSpec{}, err
 	}
 
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
 	provisionData := provider.ProvisionData{
 		InstanceID:      instanceID,
 		Details:         details,
@@ -60,9 +63,6 @@ func (b *Broker) Provision(
 		Plan:            plan,
 		ProviderCatalog: b.config.Provider.Catalog,
 	}
-
-	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
-	defer cancelFunc()
 
 	dashboardURL, operationData, err := b.Provider.Provision(providerCtx, provisionData)
 	if err != nil {
@@ -76,7 +76,7 @@ func (b *Broker) Provision(
 	})
 
 	return brokerapi.ProvisionedServiceSpec{
-		IsAsync:       true,
+		IsAsync:       asyncAllowed,
 		DashboardURL:  dashboardURL,
 		OperationData: operationData,
 	}, nil
@@ -88,7 +88,40 @@ func (b *Broker) Deprovision(
 	details brokerapi.DeprovisionDetails,
 	asyncAllowed bool,
 ) (brokerapi.DeprovisionServiceSpec, error) {
-	return brokerapi.DeprovisionServiceSpec{}, nil
+	b.logger.Debug("deprovision-start", lager.Data{
+		"instance-id":   instanceID,
+		"details":       details,
+		"async-allowed": asyncAllowed,
+	})
+
+	if !asyncAllowed {
+		return brokerapi.DeprovisionServiceSpec{}, brokerapi.ErrAsyncRequired
+	}
+
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	deprovisionData := provider.DeprovisionData{
+		InstanceID:      instanceID,
+		Details:         details,
+		ProviderCatalog: b.config.Provider.Catalog,
+	}
+
+	operationData, err := b.Provider.Deprovision(providerCtx, deprovisionData)
+	if err != nil {
+		return brokerapi.DeprovisionServiceSpec{}, err
+	}
+
+	b.logger.Debug("deprovision-success", lager.Data{
+		"instance-id":   instanceID,
+		"details":       details,
+		"async-allowed": asyncAllowed,
+	})
+
+	return brokerapi.DeprovisionServiceSpec{
+		IsAsync:       asyncAllowed,
+		OperationData: operationData,
+	}, nil
 }
 
 func (b *Broker) Bind(

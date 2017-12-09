@@ -32,3 +32,11 @@ type ProvisionData struct {
 	Plan            brokerapi.ServicePlan
 	ProviderCatalog ProviderCatalog
 }
+
+type DeprovisionData struct {
+	InstanceID      string
+	Details         brokerapi.DeprovisionDetails
+	Service         brokerapi.Service
+	Plan            brokerapi.ServicePlan
+	ProviderCatalog ProviderCatalog
+}

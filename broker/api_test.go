@@ -2,6 +2,7 @@ package broker_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -109,7 +110,7 @@ var _ = Describe("Broker API", func() {
 		})
 
 		It("responds with an internal server error if the provider errors", func() {
-			fakeProvider.ProvisionReturns("", "", fmt.Errorf("some provisioning error"))
+			fakeProvider.ProvisionReturns("", "", errors.New("some provisioning error"))
 			res := brokerTester.Put(
 				"/v2/service_instances/"+instanceID,
 				strings.NewReader(fmt.Sprintf(`{
