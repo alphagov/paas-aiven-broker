@@ -94,6 +94,7 @@ var _ = Describe("Broker API", func() {
 
 	Describe("Provision", func() {
 		It("accepts a provision request", func() {
+			fakeProvider.ProvisionReturns("dashboardURL", "operationData", nil)
 			res := brokerTester.Put(
 				"/v2/service_instances/"+instanceID,
 				strings.NewReader(fmt.Sprintf(`{
@@ -107,6 +108,16 @@ var _ = Describe("Broker API", func() {
 			)
 
 			Expect(res.Code).To(Equal(http.StatusAccepted))
+
+			provisioningResponse := brokerapi.ProvisioningResponse{}
+			err := json.Unmarshal(res.Body.Bytes(), &provisioningResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedResponse := brokerapi.ProvisioningResponse{
+				DashboardURL:  "dashboardURL",
+				OperationData: "operationData",
+			}
+			Expect(provisioningResponse).To(Equal(expectedResponse))
 		})
 
 		It("responds with an internal server error if the provider errors", func() {
@@ -142,6 +153,49 @@ var _ = Describe("Broker API", func() {
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
+
+	Describe("Deprovision", func() {
+		It("accepts a deprovision request", func() {
+			fakeProvider.DeprovisionReturns("operationData", nil)
+			res := brokerTester.Delete(
+				"/v2/service_instances/"+instanceID,
+				nil,
+				url.Values{"accepts_incomplete": []string{"true"}},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusAccepted))
+
+			deprovisionResponse := brokerapi.DeprovisionResponse{}
+			err := json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedResponse := brokerapi.DeprovisionResponse{
+				OperationData: "operationData",
+			}
+			Expect(deprovisionResponse).To(Equal(expectedResponse))
+		})
+
+		It("responds with an internal server error if the provider errors", func() {
+			fakeProvider.DeprovisionReturns("", errors.New("some deprovisioning error"))
+			res := brokerTester.Delete(
+				"/v2/service_instances/"+instanceID,
+				nil,
+				url.Values{"accepts_incomplete": []string{"true"}},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		It("rejects requests for synchronous deprovisioning", func() {
+			res := brokerTester.Delete(
+				"/v2/service_instances/"+instanceID,
+				nil,
+				url.Values{"accepts_incomplete": []string{"false"}},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
+		})
+	})
 })
 
 type BrokerTester struct {
@@ -162,6 +216,10 @@ func (bt BrokerTester) Get(path string, params url.Values) *httptest.ResponseRec
 
 func (bt BrokerTester) Put(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
 	return bt.do(bt.newRequest("PUT", path, body, params))
+}
+
+func (bt BrokerTester) Delete(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
+	return bt.do(bt.newRequest("DELETE", path, body, params))
 }
 
 func (bt BrokerTester) newRequest(method, path string, body io.Reader, params url.Values) *http.Request {
