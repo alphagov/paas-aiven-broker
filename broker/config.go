@@ -5,9 +5,16 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/henrytk/universal-service-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
+)
+
+const (
+	DefaultPort     = "3000"
+	DefaultLogLevel = "debug"
 )
 
 type Config struct {
@@ -26,6 +33,12 @@ func NewConfig(source io.Reader) (Config, error) {
 	api := API{}
 	if err = json.Unmarshal(bytes, &api); err != nil {
 		return config, err
+	}
+	if api.Port == "" {
+		api.Port = "3000"
+	}
+	if api.LogLevel == "" {
+		api.LogLevel = "debug"
 	}
 
 	catalog := Catalog{}
@@ -58,6 +71,19 @@ func (c Config) Validate() error {
 type API struct {
 	BasicAuthUsername string `json:"basic_auth_username"`
 	BasicAuthPassword string `json:"basic_auth_password"`
+	Port              string `json:"port"`
+	LogLevel          string `json:"log_level"`
+}
+
+func (api API) LagerLogLevel() lager.LogLevel {
+	logLevels := map[string]lager.LogLevel{
+		"DEBUG": lager.DEBUG,
+		"INFO":  lager.INFO,
+		"ERROR": lager.ERROR,
+		"FATAL": lager.FATAL,
+	}
+
+	return logLevels[strings.ToUpper(api.LogLevel)]
 }
 
 type Catalog struct {
