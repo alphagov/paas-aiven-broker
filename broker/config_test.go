@@ -3,7 +3,7 @@ package broker_test
 import (
 	"strings"
 
-	. "github.com/henrytk/broker-skeleton/broker"
+	. "github.com/henrytk/universal-service-broker/broker"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

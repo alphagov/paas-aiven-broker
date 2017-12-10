@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/henrytk/broker-skeleton/provider"
+	"github.com/henrytk/universal-service-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 

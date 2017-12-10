@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/henrytk/broker-skeleton/provider"
+	"github.com/henrytk/universal-service-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 
