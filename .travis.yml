@@ -1,0 +1,17 @@
+dist: trusty
+sudo: false
+
+language: go
+
+go:
+  - 1.9
+
+before_install:
+  - go get github.com/onsi/ginkgo/ginkgo
+
+install:
+  # Prevent default install task that does a `go get -t ./...`
+  - true
+
+script:
+  - ginkgo -r
