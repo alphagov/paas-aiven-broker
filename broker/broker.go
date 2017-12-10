@@ -202,7 +202,56 @@ func (b *Broker) Update(
 	details brokerapi.UpdateDetails,
 	asyncAllowed bool,
 ) (brokerapi.UpdateServiceSpec, error) {
-	return brokerapi.UpdateServiceSpec{}, nil
+	b.logger.Debug("update-start", lager.Data{
+		"instance-id":   instanceID,
+		"details":       details,
+		"async-allowed": asyncAllowed,
+	})
+
+	if !asyncAllowed {
+		return brokerapi.UpdateServiceSpec{}, brokerapi.ErrAsyncRequired
+	}
+
+	service, err := findServiceByID(b.config.Catalog, details.ServiceID)
+	if err != nil {
+		return brokerapi.UpdateServiceSpec{}, err
+	}
+
+	if !service.PlanUpdatable && details.PlanID != details.PreviousValues.PlanID {
+		return brokerapi.UpdateServiceSpec{}, brokerapi.ErrPlanChangeNotSupported
+	}
+
+	plan, err := findPlanByID(service, details.PlanID)
+	if err != nil {
+		return brokerapi.UpdateServiceSpec{}, err
+	}
+
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	updateData := provider.UpdateData{
+		InstanceID:      instanceID,
+		Details:         details,
+		Service:         service,
+		Plan:            plan,
+		ProviderCatalog: b.config.Provider.Catalog,
+	}
+
+	operationData, err := b.Provider.Update(providerCtx, updateData)
+	if err != nil {
+		return brokerapi.UpdateServiceSpec{}, err
+	}
+
+	b.logger.Debug("update-success", lager.Data{
+		"instance-id":   instanceID,
+		"details":       details,
+		"async-allowed": asyncAllowed,
+	})
+
+	return brokerapi.UpdateServiceSpec{
+		IsAsync:       asyncAllowed,
+		OperationData: operationData,
+	}, nil
 }
 
 func (b *Broker) LastOperation(

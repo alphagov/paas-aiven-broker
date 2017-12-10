@@ -46,8 +46,9 @@ var _ = Describe("Broker API", func() {
 			Catalog: Catalog{brokerapi.CatalogResponse{
 				Services: []brokerapi.Service{
 					brokerapi.Service{
-						ID:   "service1",
-						Name: "service1",
+						ID:            "service1",
+						Name:          "service1",
+						PlanUpdatable: true,
 						Plans: []brokerapi.ServicePlan{
 							brokerapi.ServicePlan{
 								ID:   "plan1",
@@ -298,6 +299,67 @@ var _ = Describe("Broker API", func() {
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
+
+	Describe("Update", func() {
+		It("accepts an update request", func() {
+			fakeProvider.UpdateReturns("operationData", nil)
+			res := brokerTester.Patch(
+				"/v2/service_instances/"+instanceID,
+				strings.NewReader(fmt.Sprintf(`{
+					"service_id": "service1",
+					"plan_id": "plan1",
+					"previous_values": {
+						"plan_id": "plan2"
+					}
+				}`)),
+				url.Values{"accepts_incomplete": []string{"true"}},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusAccepted))
+
+			updateResponse := brokerapi.UpdateResponse{}
+			err := json.Unmarshal(res.Body.Bytes(), &updateResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedResponse := brokerapi.UpdateResponse{
+				OperationData: "operationData",
+			}
+			Expect(updateResponse).To(Equal(expectedResponse))
+		})
+
+		It("responds with an internal server error if the provider errors", func() {
+			fakeProvider.UpdateReturns("", errors.New("some update error"))
+			res := brokerTester.Patch(
+				"/v2/service_instances/"+instanceID,
+				strings.NewReader(fmt.Sprintf(`{
+					"service_id": "service1",
+					"plan_id": "plan1",
+					"previous_values": {
+						"plan_id": "plan2"
+					}
+				}`)),
+				url.Values{"accepts_incomplete": []string{"true"}},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		It("rejects requests for synchronous updating", func() {
+			res := brokerTester.Patch(
+				"/v2/service_instances/"+instanceID,
+				strings.NewReader(fmt.Sprintf(`{
+					"service_id": "service1",
+					"plan_id": "plan1",
+					"previous_values": {
+						"plan_id": "plan2"
+					}
+				}`)),
+				url.Values{"accepts_incomplete": []string{"false"}},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
+		})
+	})
 })
 
 type BrokerTester struct {
@@ -318,6 +380,10 @@ func (bt BrokerTester) Get(path string, params url.Values) *httptest.ResponseRec
 
 func (bt BrokerTester) Put(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
 	return bt.do(bt.newRequest("PUT", path, body, params))
+}
+
+func (bt BrokerTester) Patch(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
+	return bt.do(bt.newRequest("PATCH", path, body, params))
 }
 
 func (bt BrokerTester) Delete(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {

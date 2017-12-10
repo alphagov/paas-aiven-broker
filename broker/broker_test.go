@@ -23,6 +23,7 @@ var _ = Describe("Broker", func() {
 		orgGUID          string
 		spaceGUID        string
 		plan1            brokerapi.ServicePlan
+		plan2            brokerapi.ServicePlan
 		service1         brokerapi.Service
 		providerCatalog  provider.ProviderCatalog
 		providerPlan1    provider.ProviderPlan
@@ -37,10 +38,15 @@ var _ = Describe("Broker", func() {
 			ID:   "plan1",
 			Name: "plan1",
 		}
+		plan2 = brokerapi.ServicePlan{
+			ID:   "plan2",
+			Name: "plan2",
+		}
 		service1 = brokerapi.Service{
-			ID:    "service1",
-			Name:  "service1",
-			Plans: []brokerapi.ServicePlan{plan1},
+			ID:            "service1",
+			Name:          "service1",
+			PlanUpdatable: true,
+			Plans:         []brokerapi.ServicePlan{plan1, plan2},
 		}
 		providerPlan1 = provider.ProviderPlan{
 			ID:             plan1.ID,
@@ -459,6 +465,170 @@ var _ = Describe("Broker", func() {
 			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
 
 			Expect(log).To(gbytes.Say("unbinding-success"))
+		})
+	})
+
+	Describe("Update", func() {
+		var updatePlanDetails brokerapi.UpdateDetails
+
+		BeforeEach(func() {
+			updatePlanDetails = brokerapi.UpdateDetails{
+				ServiceID: service1.ID,
+				PlanID:    plan2.ID,
+				PreviousValues: brokerapi.PreviousValues{
+					ServiceID: service1.ID,
+					PlanID:    plan1.ID,
+					OrgID:     orgGUID,
+					SpaceID:   spaceGUID,
+				},
+			}
+		})
+
+		Describe("Updatability", func() {
+			Context("when the plan is not updatable", func() {
+				var updateParametersDetails brokerapi.UpdateDetails
+
+				BeforeEach(func() {
+					validConfig.Catalog.Catalog.Services[0].PlanUpdatable = false
+
+					updateParametersDetails = brokerapi.UpdateDetails{
+						ServiceID:     service1.ID,
+						PlanID:        plan1.ID,
+						RawParameters: json.RawMessage(`{"new":"parameter"}`),
+						PreviousValues: brokerapi.PreviousValues{
+							ServiceID: service1.ID,
+							PlanID:    plan1.ID,
+							OrgID:     orgGUID,
+							SpaceID:   spaceGUID,
+						},
+					}
+				})
+
+				It("returns an error when changing the plan", func() {
+					b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+
+					Expect(updatePlanDetails.PlanID).NotTo(Equal(updatePlanDetails.PreviousValues.PlanID))
+					_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+					Expect(err).To(Equal(brokerapi.ErrPlanChangeNotSupported))
+				})
+
+				It("accepts the update request when just changing parameters", func() {
+					b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+
+					Expect(updateParametersDetails.PlanID).To(Equal(updateParametersDetails.PreviousValues.PlanID))
+					_, err := b.Update(context.Background(), instanceID, updateParametersDetails, true)
+
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+		})
+
+		It("logs a debug message when update begins", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(log).To(gbytes.Say("update-start"))
+		})
+
+		It("errors if async isn't allowed", func() {
+			b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+			asyncAllowed := false
+
+			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, asyncAllowed)
+
+			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
+		})
+
+		It("errors if the service is not in the catalog", func() {
+			config := validConfig
+			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
+			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+
+			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(err).To(MatchError("Error: service " + service1.ID + " not found in the catalog"))
+		})
+
+		It("errors if the plan is not in the catalog", func() {
+			config := validConfig
+			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
+			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+
+			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(err).To(MatchError("Error: plan " + plan2.ID + " not found in service " + service1.ID))
+		})
+
+		It("sets a deadline by which the update request should complete", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(fakeProvider.UpdateCallCount()).To(Equal(1))
+			receivedContext, _ := fakeProvider.UpdateArgsForCall(0)
+
+			_, hasDeadline := receivedContext.Deadline()
+
+			Expect(hasDeadline).To(BeTrue())
+		})
+
+		It("passes the correct data to the Provider", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(fakeProvider.UpdateCallCount()).To(Equal(1))
+			_, updateData := fakeProvider.UpdateArgsForCall(0)
+
+			expectedUpdateData := provider.UpdateData{
+				InstanceID:      instanceID,
+				Details:         updatePlanDetails,
+				Service:         service1,
+				Plan:            plan2,
+				ProviderCatalog: providerCatalog,
+			}
+
+			Expect(updateData).To(Equal(expectedUpdateData))
+		})
+
+		It("errors if update fails", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.UpdateReturns("", errors.New("ERROR UPDATING"))
+
+			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(err).To(MatchError("ERROR UPDATING"))
+		})
+
+		It("logs a debug message when updating succeeds", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.Update(context.Background(), instanceID, updatePlanDetails, true)
+
+			Expect(log).To(gbytes.Say("update-success"))
+		})
+
+		It("returns the update service spec", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.UpdateReturns("operation data", nil)
+
+			Expect(b.Update(context.Background(), instanceID, updatePlanDetails, true)).
+				To(Equal(brokerapi.UpdateServiceSpec{
+					IsAsync:       true,
+					OperationData: "operation data",
+				}))
 		})
 	})
 })

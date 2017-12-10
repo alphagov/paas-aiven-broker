@@ -11,4 +11,5 @@ type ServiceProvider interface {
 	Deprovision(context.Context, DeprovisionData) (operationData string, err error)
 	Bind(context.Context, BindData) (binding brokerapi.Binding, err error)
 	Unbind(context.Context, UnbindData) (err error)
+	Update(context.Context, UpdateData) (operationData string, err error)
 }

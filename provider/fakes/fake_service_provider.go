@@ -66,6 +66,20 @@ type FakeServiceProvider struct {
 	unbindReturnsOnCall map[int]struct {
 		result1 error
 	}
+	UpdateStub        func(context.Context, provider.UpdateData) (operationData string, err error)
+	updateMutex       sync.RWMutex
+	updateArgsForCall []struct {
+		arg1 context.Context
+		arg2 provider.UpdateData
+	}
+	updateReturns struct {
+		result1 string
+		result2 error
+	}
+	updateReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -278,6 +292,58 @@ func (fake *FakeServiceProvider) UnbindReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeServiceProvider) Update(arg1 context.Context, arg2 provider.UpdateData) (operationData string, err error) {
+	fake.updateMutex.Lock()
+	ret, specificReturn := fake.updateReturnsOnCall[len(fake.updateArgsForCall)]
+	fake.updateArgsForCall = append(fake.updateArgsForCall, struct {
+		arg1 context.Context
+		arg2 provider.UpdateData
+	}{arg1, arg2})
+	fake.recordInvocation("Update", []interface{}{arg1, arg2})
+	fake.updateMutex.Unlock()
+	if fake.UpdateStub != nil {
+		return fake.UpdateStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fake.updateReturns.result1, fake.updateReturns.result2
+}
+
+func (fake *FakeServiceProvider) UpdateCallCount() int {
+	fake.updateMutex.RLock()
+	defer fake.updateMutex.RUnlock()
+	return len(fake.updateArgsForCall)
+}
+
+func (fake *FakeServiceProvider) UpdateArgsForCall(i int) (context.Context, provider.UpdateData) {
+	fake.updateMutex.RLock()
+	defer fake.updateMutex.RUnlock()
+	return fake.updateArgsForCall[i].arg1, fake.updateArgsForCall[i].arg2
+}
+
+func (fake *FakeServiceProvider) UpdateReturns(result1 string, result2 error) {
+	fake.UpdateStub = nil
+	fake.updateReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeServiceProvider) UpdateReturnsOnCall(i int, result1 string, result2 error) {
+	fake.UpdateStub = nil
+	if fake.updateReturnsOnCall == nil {
+		fake.updateReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.updateReturnsOnCall[i] = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -289,6 +355,8 @@ func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	defer fake.bindMutex.RUnlock()
 	fake.unbindMutex.RLock()
 	defer fake.unbindMutex.RUnlock()
+	fake.updateMutex.RLock()
+	defer fake.updateMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

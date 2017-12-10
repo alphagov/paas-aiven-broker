@@ -54,3 +54,11 @@ type UnbindData struct {
 	Details         brokerapi.UnbindDetails
 	ProviderCatalog ProviderCatalog
 }
+
+type UpdateData struct {
+	InstanceID      string
+	Details         brokerapi.UpdateDetails
+	Service         brokerapi.Service
+	Plan            brokerapi.ServicePlan
+	ProviderCatalog ProviderCatalog
+}
