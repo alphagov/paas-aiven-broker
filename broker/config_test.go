@@ -23,10 +23,7 @@ var _ = Describe("Config", func() {
 				"catalog": {}
 			}
 		`
-		config, err := NewConfig(strings.NewReader(configSource))
-		Expect(err).NotTo(HaveOccurred())
-
-		err = config.Validate()
+		_, err := NewConfig(strings.NewReader(configSource))
 		Expect(err).To(MatchError("Config error: basic auth username required"))
 	})
 
@@ -39,10 +36,7 @@ var _ = Describe("Config", func() {
 				"catalog": {}
 			}
 		`
-		config, err := NewConfig(strings.NewReader(configSource))
-		Expect(err).NotTo(HaveOccurred())
-
-		err = config.Validate()
+		_, err := NewConfig(strings.NewReader(configSource))
 		Expect(err).To(MatchError("Config error: basic auth password required"))
 	})
 
@@ -75,9 +69,6 @@ var _ = Describe("Config", func() {
 			`
 			config, err := NewConfig(strings.NewReader(configSource))
 			Expect(err).NotTo(HaveOccurred())
-
-			err = config.Validate()
-			Expect(err).NotTo(HaveOccurred())
 			Expect(config.API.Port).To(Equal(DefaultPort))
 		})
 
@@ -91,9 +82,6 @@ var _ = Describe("Config", func() {
 				}
 			`
 			config, err := NewConfig(strings.NewReader(configSource))
-			Expect(err).NotTo(HaveOccurred())
-
-			err = config.Validate()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.API.LogLevel).To(Equal(DefaultLogLevel))
 		})

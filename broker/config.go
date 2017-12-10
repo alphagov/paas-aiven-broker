@@ -51,11 +51,15 @@ func NewConfig(source io.Reader) (Config, error) {
 		return config, err
 	}
 
-	return Config{
+	config = Config{
 		API:      api,
 		Catalog:  catalog,
 		Provider: provider,
-	}, nil
+	}
+
+	err = config.Validate()
+
+	return config, err
 }
 
 func (c Config) Validate() error {
