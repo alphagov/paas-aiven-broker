@@ -7,6 +7,7 @@ import (
 )
 
 type Provider struct {
+	Config  json.RawMessage `json:"provider_config"`
 	Catalog ProviderCatalog `json:"catalog"`
 }
 
