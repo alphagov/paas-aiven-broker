@@ -62,3 +62,9 @@ type UpdateData struct {
 	Plan            brokerapi.ServicePlan
 	ProviderCatalog ProviderCatalog
 }
+
+type LastOperationData struct {
+	InstanceID      string
+	OperationData   string
+	ProviderCatalog ProviderCatalog
+}

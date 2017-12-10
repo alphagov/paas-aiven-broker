@@ -631,4 +631,88 @@ var _ = Describe("Broker", func() {
 				}))
 		})
 	})
+
+	Describe("LastOperation", func() {
+		var operationData string
+
+		BeforeEach(func() {
+			operationData = `{"operation_type": "provision"}`
+		})
+
+		It("logs a debug message when the last operation check begins", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.LastOperation(context.Background(), instanceID, operationData)
+
+			Expect(log).To(gbytes.Say("last-operation-start"))
+		})
+
+		It("sets a deadline by which the last operation request should complete", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.LastOperation(context.Background(), instanceID, operationData)
+
+			Expect(fakeProvider.LastOperationCallCount()).To(Equal(1))
+			receivedContext, _ := fakeProvider.LastOperationArgsForCall(0)
+
+			_, hasDeadline := receivedContext.Deadline()
+
+			Expect(hasDeadline).To(BeTrue())
+		})
+
+		It("passes the correct data to the Provider", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+
+			b.LastOperation(context.Background(), instanceID, operationData)
+
+			Expect(fakeProvider.LastOperationCallCount()).To(Equal(1))
+			_, lastOperationData := fakeProvider.LastOperationArgsForCall(0)
+
+			expectedLastOperationData := provider.LastOperationData{
+				InstanceID:      instanceID,
+				OperationData:   operationData,
+				ProviderCatalog: providerCatalog,
+			}
+
+			Expect(lastOperationData).To(Equal(expectedLastOperationData))
+		})
+
+		It("errors if last operation fails", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", errors.New("ERROR LAST OPERATION"))
+
+			_, err := b.LastOperation(context.Background(), instanceID, operationData)
+
+			Expect(err).To(MatchError("ERROR LAST OPERATION"))
+		})
+
+		It("logs a debug message when last operation check succeeds", func() {
+			logger := lager.NewLogger("broker")
+			log := gbytes.NewBuffer()
+			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
+			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
+
+			b.LastOperation(context.Background(), instanceID, operationData)
+
+			Expect(log).To(gbytes.Say("last-operation-success"))
+		})
+
+		It("returns the last operation status", func() {
+			fakeProvider := &fakes.FakeServiceProvider{}
+			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
+			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "Provision successful", nil)
+
+			Expect(b.LastOperation(context.Background(), instanceID, operationData)).
+				To(Equal(brokerapi.LastOperation{
+					State:       brokerapi.Succeeded,
+					Description: "Provision successful",
+				}))
+		})
+	})
 })

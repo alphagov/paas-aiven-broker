@@ -80,6 +80,22 @@ type FakeServiceProvider struct {
 		result1 string
 		result2 error
 	}
+	LastOperationStub        func(context.Context, provider.LastOperationData) (state brokerapi.LastOperationState, description string, err error)
+	lastOperationMutex       sync.RWMutex
+	lastOperationArgsForCall []struct {
+		arg1 context.Context
+		arg2 provider.LastOperationData
+	}
+	lastOperationReturns struct {
+		result1 brokerapi.LastOperationState
+		result2 string
+		result3 error
+	}
+	lastOperationReturnsOnCall map[int]struct {
+		result1 brokerapi.LastOperationState
+		result2 string
+		result3 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -344,6 +360,61 @@ func (fake *FakeServiceProvider) UpdateReturnsOnCall(i int, result1 string, resu
 	}{result1, result2}
 }
 
+func (fake *FakeServiceProvider) LastOperation(arg1 context.Context, arg2 provider.LastOperationData) (state brokerapi.LastOperationState, description string, err error) {
+	fake.lastOperationMutex.Lock()
+	ret, specificReturn := fake.lastOperationReturnsOnCall[len(fake.lastOperationArgsForCall)]
+	fake.lastOperationArgsForCall = append(fake.lastOperationArgsForCall, struct {
+		arg1 context.Context
+		arg2 provider.LastOperationData
+	}{arg1, arg2})
+	fake.recordInvocation("LastOperation", []interface{}{arg1, arg2})
+	fake.lastOperationMutex.Unlock()
+	if fake.LastOperationStub != nil {
+		return fake.LastOperationStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	return fake.lastOperationReturns.result1, fake.lastOperationReturns.result2, fake.lastOperationReturns.result3
+}
+
+func (fake *FakeServiceProvider) LastOperationCallCount() int {
+	fake.lastOperationMutex.RLock()
+	defer fake.lastOperationMutex.RUnlock()
+	return len(fake.lastOperationArgsForCall)
+}
+
+func (fake *FakeServiceProvider) LastOperationArgsForCall(i int) (context.Context, provider.LastOperationData) {
+	fake.lastOperationMutex.RLock()
+	defer fake.lastOperationMutex.RUnlock()
+	return fake.lastOperationArgsForCall[i].arg1, fake.lastOperationArgsForCall[i].arg2
+}
+
+func (fake *FakeServiceProvider) LastOperationReturns(result1 brokerapi.LastOperationState, result2 string, result3 error) {
+	fake.LastOperationStub = nil
+	fake.lastOperationReturns = struct {
+		result1 brokerapi.LastOperationState
+		result2 string
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *FakeServiceProvider) LastOperationReturnsOnCall(i int, result1 brokerapi.LastOperationState, result2 string, result3 error) {
+	fake.LastOperationStub = nil
+	if fake.lastOperationReturnsOnCall == nil {
+		fake.lastOperationReturnsOnCall = make(map[int]struct {
+			result1 brokerapi.LastOperationState
+			result2 string
+			result3 error
+		})
+	}
+	fake.lastOperationReturnsOnCall[i] = struct {
+		result1 brokerapi.LastOperationState
+		result2 string
+		result3 error
+	}{result1, result2, result3}
+}
+
 func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -357,6 +428,8 @@ func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	defer fake.unbindMutex.RUnlock()
 	fake.updateMutex.RLock()
 	defer fake.updateMutex.RUnlock()
+	fake.lastOperationMutex.RLock()
+	defer fake.lastOperationMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

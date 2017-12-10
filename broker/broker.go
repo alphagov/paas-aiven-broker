@@ -259,5 +259,32 @@ func (b *Broker) LastOperation(
 	instanceID,
 	operationData string,
 ) (brokerapi.LastOperation, error) {
-	return brokerapi.LastOperation{}, nil
+	b.logger.Debug("last-operation-start", lager.Data{
+		"instance-id":    instanceID,
+		"operation-data": operationData,
+	})
+
+	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelFunc()
+
+	lastOperationData := provider.LastOperationData{
+		InstanceID:      instanceID,
+		OperationData:   operationData,
+		ProviderCatalog: b.config.Provider.Catalog,
+	}
+
+	state, description, err := b.Provider.LastOperation(providerCtx, lastOperationData)
+	if err != nil {
+		return brokerapi.LastOperation{}, err
+	}
+
+	b.logger.Debug("last-operation-success", lager.Data{
+		"instance-id":    instanceID,
+		"operation-data": operationData,
+	})
+
+	return brokerapi.LastOperation{
+		State:       state,
+		Description: description,
+	}, nil
 }

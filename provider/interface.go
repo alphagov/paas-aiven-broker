@@ -12,4 +12,5 @@ type ServiceProvider interface {
 	Bind(context.Context, BindData) (binding brokerapi.Binding, err error)
 	Unbind(context.Context, UnbindData) (err error)
 	Update(context.Context, UpdateData) (operationData string, err error)
+	LastOperation(context.Context, LastOperationData) (state brokerapi.LastOperationState, description string, err error)
 }

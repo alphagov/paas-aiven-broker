@@ -360,6 +360,49 @@ var _ = Describe("Broker API", func() {
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
+
+	Describe("LastOperation", func() {
+		It("provides the state of the operation", func() {
+			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "description", nil)
+			res := brokerTester.Get(
+				fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
+				url.Values{},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusOK))
+
+			lastOperationResponse := brokerapi.LastOperationResponse{}
+			err := json.Unmarshal(res.Body.Bytes(), &lastOperationResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedResponse := brokerapi.LastOperationResponse{
+				State:       brokerapi.Succeeded,
+				Description: "description",
+			}
+			Expect(lastOperationResponse).To(Equal(expectedResponse))
+		})
+
+		It("responds with an internal server error if the provider errors", func() {
+			lastOperationError := errors.New("some last operation error")
+			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", lastOperationError)
+			res := brokerTester.Get(
+				fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
+				url.Values{},
+			)
+
+			Expect(res.Code).To(Equal(http.StatusInternalServerError))
+
+			lastOperationResponse := brokerapi.LastOperationResponse{}
+			err := json.Unmarshal(res.Body.Bytes(), &lastOperationResponse)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedResponse := brokerapi.LastOperationResponse{
+				State:       "",
+				Description: lastOperationError.Error(),
+			}
+			Expect(lastOperationResponse).To(Equal(expectedResponse))
+		})
+	})
 })
 
 type BrokerTester struct {
