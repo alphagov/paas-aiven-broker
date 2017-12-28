@@ -7,7 +7,7 @@ import (
 )
 
 type Provider struct {
-	Config  json.RawMessage `json:"provider_config"`
+	Config  json.RawMessage `json:"provider"`
 	Catalog ProviderCatalog `json:"catalog"`
 }
 
@@ -17,13 +17,13 @@ type ProviderCatalog struct {
 
 type ProviderService struct {
 	ID             string          `json:"id"`
-	ProviderConfig json.RawMessage `json:"provider_config"`
+	ProviderConfig json.RawMessage `json:"provider"`
 	Plans          []ProviderPlan  `json:"plans"`
 }
 
 type ProviderPlan struct {
 	ID             string          `json:"id"`
-	ProviderConfig json.RawMessage `json:"provider_config"`
+	ProviderConfig json.RawMessage `json:"provider"`
 }
 
 type ProvisionData struct {
