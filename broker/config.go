@@ -19,7 +19,7 @@ const (
 type Config struct {
 	API      API
 	Catalog  Catalog
-	Provider json.RawMessage
+	Provider []byte
 }
 
 func NewConfig(source io.Reader) (Config, error) {
@@ -48,7 +48,7 @@ func NewConfig(source io.Reader) (Config, error) {
 	config = Config{
 		API:      api,
 		Catalog:  catalog,
-		Provider: json.RawMessage(bytes),
+		Provider: bytes,
 	}
 
 	err = config.Validate()
