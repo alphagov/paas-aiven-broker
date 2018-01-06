@@ -39,6 +39,10 @@ func NewConfig(source io.Reader) (Config, error) {
 	if api.LogLevel == "" {
 		api.LogLevel = "debug"
 	}
+	api.LagerLogLevel, err = api.ConvertLogLevel()
+	if err != nil {
+		return config, err
+	}
 
 	catalog := Catalog{}
 	if err = json.Unmarshal(bytes, &catalog); err != nil {
@@ -71,17 +75,21 @@ type API struct {
 	BasicAuthPassword string `json:"basic_auth_password"`
 	Port              string `json:"port"`
 	LogLevel          string `json:"log_level"`
+	LagerLogLevel     lager.LogLevel
 }
 
-func (api API) LagerLogLevel() lager.LogLevel {
+func (api API) ConvertLogLevel() (lager.LogLevel, error) {
 	logLevels := map[string]lager.LogLevel{
 		"DEBUG": lager.DEBUG,
 		"INFO":  lager.INFO,
 		"ERROR": lager.ERROR,
 		"FATAL": lager.FATAL,
 	}
-
-	return logLevels[strings.ToUpper(api.LogLevel)]
+	logLevel, ok := logLevels[strings.ToUpper(api.LogLevel)]
+	if !ok {
+		return lager.DEBUG, fmt.Errorf("Error: log level %s does not map to a Lager log level", api.LogLevel)
+	}
+	return logLevel, nil
 }
 
 type Catalog struct {

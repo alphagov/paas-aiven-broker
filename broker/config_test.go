@@ -53,8 +53,23 @@ var _ = Describe("Config", func() {
 		config, err := NewConfig(strings.NewReader(configSource))
 		Expect(err).NotTo(HaveOccurred())
 
-		lagerLogLevel := config.API.LagerLogLevel()
+		lagerLogLevel, err := config.API.ConvertLogLevel()
+		Expect(err).NotTo(HaveOccurred())
 		Expect(lagerLogLevel).To(Equal(lager.DEBUG))
+	})
+
+	It("errors if the log level doesn't map to a Lager log level", func() {
+		configSource = `
+			{
+				"basic_auth_username":"username",
+				"basic_auth_password":"1234",
+				"port": "8080",
+				"log_level": "debuggery",
+				"catalog": {}
+			}
+		`
+		_, err := NewConfig(strings.NewReader(configSource))
+		Expect(err).To(MatchError("Error: log level debuggery does not map to a Lager log level"))
 	})
 
 	Describe("default values", func() {
