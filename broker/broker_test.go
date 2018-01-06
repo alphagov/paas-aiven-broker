@@ -18,16 +18,13 @@ import (
 
 var _ = Describe("Broker", func() {
 	var (
-		validConfig      Config
-		instanceID       string
-		orgGUID          string
-		spaceGUID        string
-		plan1            brokerapi.ServicePlan
-		plan2            brokerapi.ServicePlan
-		service1         brokerapi.Service
-		providerCatalog  provider.ProviderCatalog
-		providerPlan1    provider.ProviderPlan
-		providerService1 provider.ProviderService
+		validConfig Config
+		instanceID  string
+		orgGUID     string
+		spaceGUID   string
+		plan1       brokerapi.ServicePlan
+		plan2       brokerapi.ServicePlan
+		service1    brokerapi.Service
 	)
 
 	BeforeEach(func() {
@@ -48,25 +45,12 @@ var _ = Describe("Broker", func() {
 			PlanUpdatable: true,
 			Plans:         []brokerapi.ServicePlan{plan1, plan2},
 		}
-		providerPlan1 = provider.ProviderPlan{
-			ID:             plan1.ID,
-			ProviderConfig: json.RawMessage(`{"this-is": "some-provider-specific-plan-config"}`),
-		}
-		providerService1 = provider.ProviderService{
-			ID:             service1.ID,
-			ProviderConfig: json.RawMessage(`{"this-is": "some-provider-specific-service-config"}`),
-			Plans:          []provider.ProviderPlan{providerPlan1},
-		}
-		providerCatalog = provider.ProviderCatalog{
-			Services: []provider.ProviderService{providerService1},
-		}
 		validConfig = Config{
 			Catalog: Catalog{
 				brokerapi.CatalogResponse{
 					Services: []brokerapi.Service{service1},
 				},
 			},
-			Provider: provider.Provider{Catalog: providerCatalog},
 		}
 	})
 
@@ -146,11 +130,10 @@ var _ = Describe("Broker", func() {
 			_, provisionData := fakeProvider.ProvisionArgsForCall(0)
 
 			expectedProvisionData := provider.ProvisionData{
-				InstanceID:      instanceID,
-				Details:         validProvisionDetails,
-				Service:         service1,
-				Plan:            plan1,
-				ProviderCatalog: providerCatalog,
+				InstanceID: instanceID,
+				Details:    validProvisionDetails,
+				Service:    service1,
+				Plan:       plan1,
 			}
 
 			Expect(provisionData).To(Equal(expectedProvisionData))
@@ -245,9 +228,8 @@ var _ = Describe("Broker", func() {
 			_, deprovisionData := fakeProvider.DeprovisionArgsForCall(0)
 
 			expectedDeprovisionData := provider.DeprovisionData{
-				InstanceID:      instanceID,
-				Details:         validDeprovisionDetails,
-				ProviderCatalog: providerCatalog,
+				InstanceID: instanceID,
+				Details:    validDeprovisionDetails,
 			}
 
 			Expect(deprovisionData).To(Equal(expectedDeprovisionData))
@@ -344,10 +326,9 @@ var _ = Describe("Broker", func() {
 			_, bindData := fakeProvider.BindArgsForCall(0)
 
 			expectedBindData := provider.BindData{
-				InstanceID:      instanceID,
-				BindingID:       bindingID,
-				Details:         validBindDetails,
-				ProviderCatalog: providerCatalog,
+				InstanceID: instanceID,
+				BindingID:  bindingID,
+				Details:    validBindDetails,
 			}
 
 			Expect(bindData).To(Equal(expectedBindData))
@@ -437,10 +418,9 @@ var _ = Describe("Broker", func() {
 			_, unbindData := fakeProvider.UnbindArgsForCall(0)
 
 			expectedUnbindData := provider.UnbindData{
-				InstanceID:      instanceID,
-				BindingID:       bindingID,
-				Details:         validUnbindDetails,
-				ProviderCatalog: providerCatalog,
+				InstanceID: instanceID,
+				BindingID:  bindingID,
+				Details:    validUnbindDetails,
 			}
 
 			Expect(unbindData).To(Equal(expectedUnbindData))
@@ -588,11 +568,10 @@ var _ = Describe("Broker", func() {
 			_, updateData := fakeProvider.UpdateArgsForCall(0)
 
 			expectedUpdateData := provider.UpdateData{
-				InstanceID:      instanceID,
-				Details:         updatePlanDetails,
-				Service:         service1,
-				Plan:            plan2,
-				ProviderCatalog: providerCatalog,
+				InstanceID: instanceID,
+				Details:    updatePlanDetails,
+				Service:    service1,
+				Plan:       plan2,
 			}
 
 			Expect(updateData).To(Equal(expectedUpdateData))
@@ -674,9 +653,8 @@ var _ = Describe("Broker", func() {
 			_, lastOperationData := fakeProvider.LastOperationArgsForCall(0)
 
 			expectedLastOperationData := provider.LastOperationData{
-				InstanceID:      instanceID,
-				OperationData:   operationData,
-				ProviderCatalog: providerCatalog,
+				InstanceID:    instanceID,
+				OperationData: operationData,
 			}
 
 			Expect(lastOperationData).To(Equal(expectedLastOperationData))

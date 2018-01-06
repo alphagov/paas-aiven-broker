@@ -57,11 +57,10 @@ func (b *Broker) Provision(
 	defer cancelFunc()
 
 	provisionData := provider.ProvisionData{
-		InstanceID:      instanceID,
-		Details:         details,
-		Service:         service,
-		Plan:            plan,
-		ProviderCatalog: b.config.Provider.Catalog,
+		InstanceID: instanceID,
+		Details:    details,
+		Service:    service,
+		Plan:       plan,
 	}
 
 	dashboardURL, operationData, err := b.Provider.Provision(providerCtx, provisionData)
@@ -102,9 +101,8 @@ func (b *Broker) Deprovision(
 	defer cancelFunc()
 
 	deprovisionData := provider.DeprovisionData{
-		InstanceID:      instanceID,
-		Details:         details,
-		ProviderCatalog: b.config.Provider.Catalog,
+		InstanceID: instanceID,
+		Details:    details,
 	}
 
 	operationData, err := b.Provider.Deprovision(providerCtx, deprovisionData)
@@ -140,10 +138,9 @@ func (b *Broker) Bind(
 	defer cancelFunc()
 
 	bindData := provider.BindData{
-		InstanceID:      instanceID,
-		BindingID:       bindingID,
-		Details:         details,
-		ProviderCatalog: b.config.Provider.Catalog,
+		InstanceID: instanceID,
+		BindingID:  bindingID,
+		Details:    details,
 	}
 
 	binding, err := b.Provider.Bind(providerCtx, bindData)
@@ -176,10 +173,9 @@ func (b *Broker) Unbind(
 	defer cancelFunc()
 
 	unbindData := provider.UnbindData{
-		InstanceID:      instanceID,
-		BindingID:       bindingID,
-		Details:         details,
-		ProviderCatalog: b.config.Provider.Catalog,
+		InstanceID: instanceID,
+		BindingID:  bindingID,
+		Details:    details,
 	}
 
 	err := b.Provider.Unbind(providerCtx, unbindData)
@@ -230,11 +226,10 @@ func (b *Broker) Update(
 	defer cancelFunc()
 
 	updateData := provider.UpdateData{
-		InstanceID:      instanceID,
-		Details:         details,
-		Service:         service,
-		Plan:            plan,
-		ProviderCatalog: b.config.Provider.Catalog,
+		InstanceID: instanceID,
+		Details:    details,
+		Service:    service,
+		Plan:       plan,
 	}
 
 	operationData, err := b.Provider.Update(providerCtx, updateData)
@@ -268,9 +263,8 @@ func (b *Broker) LastOperation(
 	defer cancelFunc()
 
 	lastOperationData := provider.LastOperationData{
-		InstanceID:      instanceID,
-		OperationData:   operationData,
-		ProviderCatalog: b.config.Provider.Catalog,
+		InstanceID:    instanceID,
+		OperationData: operationData,
 	}
 
 	state, description, err := b.Provider.LastOperation(providerCtx, lastOperationData)

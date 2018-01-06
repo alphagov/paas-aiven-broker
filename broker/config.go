@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/henrytk/universal-service-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -20,7 +19,7 @@ const (
 type Config struct {
 	API      API
 	Catalog  Catalog
-	Provider provider.Provider
+	Provider json.RawMessage
 }
 
 func NewConfig(source io.Reader) (Config, error) {
@@ -46,15 +45,10 @@ func NewConfig(source io.Reader) (Config, error) {
 		return config, err
 	}
 
-	provider := provider.Provider{}
-	if err = json.Unmarshal(bytes, &provider); err != nil {
-		return config, err
-	}
-
 	config = Config{
 		API:      api,
 		Catalog:  catalog,
-		Provider: provider,
+		Provider: json.RawMessage(bytes),
 	}
 
 	err = config.Validate()
