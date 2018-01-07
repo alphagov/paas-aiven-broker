@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"reflect"
 	"strings"
 
 	"code.cloudfoundry.org/lager"
@@ -67,6 +68,17 @@ func (c Config) Validate() error {
 	if c.API.BasicAuthPassword == "" {
 		return fmt.Errorf("Config error: basic auth password required")
 	}
+	if reflect.DeepEqual(c.Catalog, Catalog{}) {
+		return fmt.Errorf("Config error: catalog required")
+	}
+	if len(c.Catalog.Catalog.Services) == 0 {
+		return fmt.Errorf("Config error: at least one service is required")
+	}
+	for _, service := range c.Catalog.Catalog.Services {
+		if len(service.Plans) == 0 {
+			return fmt.Errorf("Config error: no plans found for service %s", service.Name)
+		}
+	}
 	return nil
 }
 
@@ -87,7 +99,7 @@ func (api API) ConvertLogLevel() (lager.LogLevel, error) {
 	}
 	logLevel, ok := logLevels[strings.ToUpper(api.LogLevel)]
 	if !ok {
-		return lager.DEBUG, fmt.Errorf("Error: log level %s does not map to a Lager log level", api.LogLevel)
+		return lager.DEBUG, fmt.Errorf("Config error: log level %s does not map to a Lager log level", api.LogLevel)
 	}
 	return logLevel, nil
 }
