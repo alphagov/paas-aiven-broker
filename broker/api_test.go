@@ -1,18 +1,14 @@
 package broker_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
-	"strconv"
 
 	"code.cloudfoundry.org/lager"
 	. "github.com/henrytk/universal-service-broker/broker"
+	broker_tester "github.com/henrytk/universal-service-broker/broker/testing"
 	"github.com/henrytk/universal-service-broker/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
 
@@ -32,7 +28,7 @@ var _ = Describe("Broker API", func() {
 		fakeProvider *fakes.FakeServiceProvider
 		broker       *Broker
 		brokerAPI    http.Handler
-		brokerTester BrokerTester
+		brokerTester broker_tester.BrokerTester
 	)
 
 	BeforeEach(func() {
@@ -67,7 +63,7 @@ var _ = Describe("Broker API", func() {
 		broker = New(validConfig, fakeProvider, logger)
 		brokerAPI = NewAPI(broker, logger, validConfig)
 
-		brokerTester = NewBrokerTester(brokerapi.BrokerCredentials{
+		brokerTester = broker_tester.New(brokerapi.BrokerCredentials{
 			Username: validConfig.API.BasicAuthUsername,
 			Password: validConfig.API.BasicAuthPassword,
 		}, brokerAPI)
@@ -99,7 +95,7 @@ var _ = Describe("Broker API", func() {
 			fakeProvider.ProvisionReturns("dashboardURL", "operationData", nil)
 			res := brokerTester.Provision(
 				instanceID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID:        "service1",
 					PlanID:           "plan1",
 					OrganizationGUID: orgGUID,
@@ -124,7 +120,7 @@ var _ = Describe("Broker API", func() {
 			fakeProvider.ProvisionReturns("", "", errors.New("some provisioning error"))
 			res := brokerTester.Provision(
 				instanceID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID:        "service1",
 					PlanID:           "plan1",
 					OrganizationGUID: orgGUID,
@@ -138,7 +134,7 @@ var _ = Describe("Broker API", func() {
 		It("rejects requests for synchronous provisioning", func() {
 			res := brokerTester.Provision(
 				instanceID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID:        "service1",
 					PlanID:           "plan1",
 					OrganizationGUID: orgGUID,
@@ -194,7 +190,7 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Bind(
 				instanceID,
 				bindingID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
 					AppGUID:   appGUID,
@@ -217,7 +213,7 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Bind(
 				instanceID,
 				bindingID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
 					AppGUID:   appGUID,
@@ -238,7 +234,7 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Unbind(
 				instanceID,
 				bindingID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
 				},
@@ -251,7 +247,7 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Unbind(
 				instanceID,
 				bindingID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
 				},
@@ -265,10 +261,10 @@ var _ = Describe("Broker API", func() {
 			fakeProvider.UpdateReturns("operationData", nil)
 			res := brokerTester.Update(
 				instanceID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
-					PreviousValues: &RequestBody{
+					PreviousValues: &broker_tester.RequestBody{
 						PlanID: "plan2",
 					},
 				},
@@ -290,10 +286,10 @@ var _ = Describe("Broker API", func() {
 			fakeProvider.UpdateReturns("", errors.New("some update error"))
 			res := brokerTester.Update(
 				instanceID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
-					PreviousValues: &RequestBody{
+					PreviousValues: &broker_tester.RequestBody{
 						PlanID: "plan2",
 					},
 				},
@@ -305,10 +301,10 @@ var _ = Describe("Broker API", func() {
 		It("rejects requests for synchronous updating", func() {
 			res := brokerTester.Update(
 				instanceID,
-				RequestBody{
+				broker_tester.RequestBody{
 					ServiceID: "service1",
 					PlanID:    "plan1",
-					PreviousValues: &RequestBody{
+					PreviousValues: &broker_tester.RequestBody{
 						PlanID: "plan2",
 					},
 				},
@@ -353,113 +349,3 @@ var _ = Describe("Broker API", func() {
 		})
 	})
 })
-
-type BrokerTester struct {
-	credentials brokerapi.BrokerCredentials
-	brokerAPI   http.Handler
-}
-
-func NewBrokerTester(credentials brokerapi.BrokerCredentials, brokerAPI http.Handler) BrokerTester {
-	return BrokerTester{
-		credentials: credentials,
-		brokerAPI:   brokerAPI,
-	}
-}
-
-type RequestBody struct {
-	ServiceID        string       `json:"service_id,omitempty"`
-	PlanID           string       `json:"plan_id,omitempty"`
-	OrganizationGUID string       `json:"organization_guid,omitempty"`
-	SpaceGUID        string       `json:"space_guid,omitempty"`
-	AppGUID          string       `json:"app_guid,omitempty"`
-	PreviousValues   *RequestBody `json:"previous_values,omitempty"`
-}
-
-func (bt BrokerTester) Services() *httptest.ResponseRecorder {
-	return bt.Get("/v2/catalog", url.Values{})
-}
-
-func (bt BrokerTester) Provision(instanceID string, body RequestBody, async bool) *httptest.ResponseRecorder {
-	bodyJSON, _ := json.Marshal(body)
-	return bt.Put(
-		"/v2/service_instances/"+instanceID,
-		bytes.NewBuffer(bodyJSON),
-		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
-	)
-}
-
-func (bt BrokerTester) Deprovision(instanceID string, async bool) *httptest.ResponseRecorder {
-	return bt.Delete(
-		"/v2/service_instances/"+instanceID,
-		nil,
-		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
-	)
-}
-
-func (bt BrokerTester) Bind(instanceID, bindingID string, body RequestBody) *httptest.ResponseRecorder {
-	bodyJSON, _ := json.Marshal(body)
-	return bt.Put(
-		fmt.Sprintf("/v2/service_instances/%s/service_bindings/%s", instanceID, bindingID),
-		bytes.NewBuffer(bodyJSON),
-		url.Values{},
-	)
-}
-
-func (bt BrokerTester) Unbind(instanceID, bindingID string, body RequestBody) *httptest.ResponseRecorder {
-	bodyJSON, _ := json.Marshal(body)
-	return bt.Delete(
-		fmt.Sprintf(
-			"/v2/service_instances/%s/service_bindings/%s",
-			instanceID,
-			bindingID,
-		),
-		bytes.NewBuffer(bodyJSON),
-		url.Values{},
-	)
-}
-
-func (bt BrokerTester) Update(instanceID string, body RequestBody, async bool) *httptest.ResponseRecorder {
-	bodyJSON, _ := json.Marshal(body)
-	return bt.Patch(
-		"/v2/service_instances/"+instanceID,
-		bytes.NewBuffer(bodyJSON),
-		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
-	)
-}
-
-func (bt BrokerTester) LastOperation(instanceID string) *httptest.ResponseRecorder {
-	return bt.Get(
-		fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
-		url.Values{},
-	)
-}
-
-func (bt BrokerTester) Get(path string, params url.Values) *httptest.ResponseRecorder {
-	return bt.do(bt.newRequest("GET", path, nil, params))
-}
-
-func (bt BrokerTester) Put(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
-	return bt.do(bt.newRequest("PUT", path, body, params))
-}
-
-func (bt BrokerTester) Patch(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
-	return bt.do(bt.newRequest("PATCH", path, body, params))
-}
-
-func (bt BrokerTester) Delete(path string, body io.Reader, params url.Values) *httptest.ResponseRecorder {
-	return bt.do(bt.newRequest("DELETE", path, body, params))
-}
-
-func (bt BrokerTester) newRequest(method, path string, body io.Reader, params url.Values) *http.Request {
-	url := fmt.Sprintf("http://%s", "127.0.0.1:8080"+path)
-	req := httptest.NewRequest(method, url, body)
-	req.URL.RawQuery = params.Encode()
-	return req
-}
-
-func (bt BrokerTester) do(req *http.Request) *httptest.ResponseRecorder {
-	res := httptest.NewRecorder()
-	req.SetBasicAuth(bt.credentials.Username, bt.credentials.Password)
-	bt.brokerAPI.ServeHTTP(res, req)
-	return res
-}
