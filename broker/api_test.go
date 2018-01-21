@@ -1,6 +1,7 @@
 package broker_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
+	"strconv"
 
 	"code.cloudfoundry.org/lager"
 	. "github.com/henrytk/universal-service-broker/broker"
@@ -79,7 +80,7 @@ var _ = Describe("Broker API", func() {
 
 	Describe("Services", func() {
 		It("serves the catalog", func() {
-			res := brokerTester.Get("/v2/catalog", url.Values{})
+			res := brokerTester.Services()
 			Expect(res.Code).To(Equal(http.StatusOK))
 
 			catalogResponse := brokerapi.CatalogResponse{}
@@ -96,18 +97,16 @@ var _ = Describe("Broker API", func() {
 	Describe("Provision", func() {
 		It("accepts a provision request", func() {
 			fakeProvider.ProvisionReturns("dashboardURL", "operationData", nil)
-			res := brokerTester.Put(
-				"/v2/service_instances/"+instanceID,
-				strings.NewReader(fmt.Sprintf(`{
-					"service_id": "service1",
-					"plan_id": "plan1",
-					"organization_guid": "%s",
-					"space_guid": "%s",
-					"parameters": {}
-				}`, orgGUID, spaceGUID)),
-				url.Values{"accepts_incomplete": []string{"true"}},
+			res := brokerTester.Provision(
+				instanceID,
+				RequestBody{
+					ServiceID:        "service1",
+					PlanID:           "plan1",
+					OrganizationGUID: orgGUID,
+					SpaceGUID:        spaceGUID,
+				},
+				true,
 			)
-
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			provisioningResponse := brokerapi.ProvisioningResponse{}
@@ -123,34 +122,30 @@ var _ = Describe("Broker API", func() {
 
 		It("responds with an internal server error if the provider errors", func() {
 			fakeProvider.ProvisionReturns("", "", errors.New("some provisioning error"))
-			res := brokerTester.Put(
-				"/v2/service_instances/"+instanceID,
-				strings.NewReader(fmt.Sprintf(`{
-					"service_id": "service1",
-					"plan_id": "plan1",
-					"organization_guid": "%s",
-					"space_guid": "%s",
-					"parameters": {}
-				}`, orgGUID, spaceGUID)),
-				url.Values{"accepts_incomplete": []string{"true"}},
+			res := brokerTester.Provision(
+				instanceID,
+				RequestBody{
+					ServiceID:        "service1",
+					PlanID:           "plan1",
+					OrganizationGUID: orgGUID,
+					SpaceGUID:        spaceGUID,
+				},
+				true,
 			)
-
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 
 		It("rejects requests for synchronous provisioning", func() {
-			res := brokerTester.Put(
-				"/v2/service_instances/"+instanceID,
-				strings.NewReader(fmt.Sprintf(`{
-					"service_id": "service1",
-					"plan_id": "plan1",
-					"organization_guid": "%s",
-					"space_guid": "%s",
-					"parameters": {}
-				}`, orgGUID, spaceGUID)),
-				url.Values{"accepts_incomplete": []string{"false"}},
+			res := brokerTester.Provision(
+				instanceID,
+				RequestBody{
+					ServiceID:        "service1",
+					PlanID:           "plan1",
+					OrganizationGUID: orgGUID,
+					SpaceGUID:        spaceGUID,
+				},
+				false,
 			)
-
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
@@ -158,12 +153,7 @@ var _ = Describe("Broker API", func() {
 	Describe("Deprovision", func() {
 		It("accepts a deprovision request", func() {
 			fakeProvider.DeprovisionReturns("operationData", nil)
-			res := brokerTester.Delete(
-				"/v2/service_instances/"+instanceID,
-				nil,
-				url.Values{"accepts_incomplete": []string{"true"}},
-			)
-
+			res := brokerTester.Deprovision(instanceID, true)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			deprovisionResponse := brokerapi.DeprovisionResponse{}
@@ -178,22 +168,12 @@ var _ = Describe("Broker API", func() {
 
 		It("responds with an internal server error if the provider errors", func() {
 			fakeProvider.DeprovisionReturns("", errors.New("some deprovisioning error"))
-			res := brokerTester.Delete(
-				"/v2/service_instances/"+instanceID,
-				nil,
-				url.Values{"accepts_incomplete": []string{"true"}},
-			)
-
+			res := brokerTester.Deprovision(instanceID, true)
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 
 		It("rejects requests for synchronous deprovisioning", func() {
-			res := brokerTester.Delete(
-				"/v2/service_instances/"+instanceID,
-				nil,
-				url.Values{"accepts_incomplete": []string{"false"}},
-			)
-
+			res := brokerTester.Deprovision(instanceID, false)
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
@@ -211,20 +191,15 @@ var _ = Describe("Broker API", func() {
 
 		It("creates a binding", func() {
 			fakeProvider.BindReturns(brokerapi.Binding{Credentials: "secrets"}, nil)
-			res := brokerTester.Put(
-				fmt.Sprintf(
-					"/v2/service_instances/%s/service_bindings/%s",
-					instanceID,
-					bindingID,
-				),
-				strings.NewReader(fmt.Sprintf(`{
-						"service_id": "service1",
-						"plan_id": "plan1",
-						"app_guid": "%s"
-					}`, appGUID)),
-				url.Values{},
+			res := brokerTester.Bind(
+				instanceID,
+				bindingID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+					AppGUID:   appGUID,
+				},
 			)
-
 			Expect(res.Code).To(Equal(http.StatusCreated))
 
 			binding := brokerapi.Binding{}
@@ -239,20 +214,15 @@ var _ = Describe("Broker API", func() {
 
 		It("responds with an internal server error if the provider errors", func() {
 			fakeProvider.BindReturns(brokerapi.Binding{}, errors.New("some binding error"))
-			res := brokerTester.Put(
-				fmt.Sprintf(
-					"/v2/service_instances/%s/service_bindings/%s",
-					instanceID,
-					bindingID,
-				),
-				strings.NewReader(fmt.Sprintf(`{
-						"service_id": "service1",
-						"plan_id": "plan1",
-						"app_guid": "%s"
-					}`, appGUID)),
-				url.Values{},
+			res := brokerTester.Bind(
+				instanceID,
+				bindingID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+					AppGUID:   appGUID,
+				},
 			)
-
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
@@ -265,37 +235,27 @@ var _ = Describe("Broker API", func() {
 		})
 
 		It("unbinds", func() {
-			res := brokerTester.Delete(
-				fmt.Sprintf(
-					"/v2/service_instances/%s/service_bindings/%s",
-					instanceID,
-					bindingID,
-				),
-				strings.NewReader(fmt.Sprintf(`{
-						"service_id": "service1",
-						"plan_id": "plan1"
-					}`)),
-				url.Values{},
+			res := brokerTester.Unbind(
+				instanceID,
+				bindingID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+				},
 			)
-
 			Expect(res.Code).To(Equal(http.StatusOK))
 		})
 
 		It("responds with an internal server error if the provider errors", func() {
 			fakeProvider.UnbindReturns(errors.New("some unbinding error"))
-			res := brokerTester.Delete(
-				fmt.Sprintf(
-					"/v2/service_instances/%s/service_bindings/%s",
-					instanceID,
-					bindingID,
-				),
-				strings.NewReader(fmt.Sprintf(`{
-						"service_id": "service1",
-						"plan_id": "plan1"
-					}`)),
-				url.Values{},
+			res := brokerTester.Unbind(
+				instanceID,
+				bindingID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+				},
 			)
-
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
@@ -303,18 +263,17 @@ var _ = Describe("Broker API", func() {
 	Describe("Update", func() {
 		It("accepts an update request", func() {
 			fakeProvider.UpdateReturns("operationData", nil)
-			res := brokerTester.Patch(
-				"/v2/service_instances/"+instanceID,
-				strings.NewReader(fmt.Sprintf(`{
-					"service_id": "service1",
-					"plan_id": "plan1",
-					"previous_values": {
-						"plan_id": "plan2"
-					}
-				}`)),
-				url.Values{"accepts_incomplete": []string{"true"}},
+			res := brokerTester.Update(
+				instanceID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+					PreviousValues: &RequestBody{
+						PlanID: "plan2",
+					},
+				},
+				true,
 			)
-
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			updateResponse := brokerapi.UpdateResponse{}
@@ -329,34 +288,32 @@ var _ = Describe("Broker API", func() {
 
 		It("responds with an internal server error if the provider errors", func() {
 			fakeProvider.UpdateReturns("", errors.New("some update error"))
-			res := brokerTester.Patch(
-				"/v2/service_instances/"+instanceID,
-				strings.NewReader(fmt.Sprintf(`{
-					"service_id": "service1",
-					"plan_id": "plan1",
-					"previous_values": {
-						"plan_id": "plan2"
-					}
-				}`)),
-				url.Values{"accepts_incomplete": []string{"true"}},
+			res := brokerTester.Update(
+				instanceID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+					PreviousValues: &RequestBody{
+						PlanID: "plan2",
+					},
+				},
+				true,
 			)
-
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 
 		It("rejects requests for synchronous updating", func() {
-			res := brokerTester.Patch(
-				"/v2/service_instances/"+instanceID,
-				strings.NewReader(fmt.Sprintf(`{
-					"service_id": "service1",
-					"plan_id": "plan1",
-					"previous_values": {
-						"plan_id": "plan2"
-					}
-				}`)),
-				url.Values{"accepts_incomplete": []string{"false"}},
+			res := brokerTester.Update(
+				instanceID,
+				RequestBody{
+					ServiceID: "service1",
+					PlanID:    "plan1",
+					PreviousValues: &RequestBody{
+						PlanID: "plan2",
+					},
+				},
+				false,
 			)
-
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
@@ -364,11 +321,7 @@ var _ = Describe("Broker API", func() {
 	Describe("LastOperation", func() {
 		It("provides the state of the operation", func() {
 			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "description", nil)
-			res := brokerTester.Get(
-				fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
-				url.Values{},
-			)
-
+			res := brokerTester.LastOperation(instanceID)
 			Expect(res.Code).To(Equal(http.StatusOK))
 
 			lastOperationResponse := brokerapi.LastOperationResponse{}
@@ -385,11 +338,7 @@ var _ = Describe("Broker API", func() {
 		It("responds with an internal server error if the provider errors", func() {
 			lastOperationError := errors.New("some last operation error")
 			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", lastOperationError)
-			res := brokerTester.Get(
-				fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
-				url.Values{},
-			)
-
+			res := brokerTester.LastOperation(instanceID)
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 
 			lastOperationResponse := brokerapi.LastOperationResponse{}
@@ -415,6 +364,74 @@ func NewBrokerTester(credentials brokerapi.BrokerCredentials, brokerAPI http.Han
 		credentials: credentials,
 		brokerAPI:   brokerAPI,
 	}
+}
+
+type RequestBody struct {
+	ServiceID        string       `json:"service_id,omitempty"`
+	PlanID           string       `json:"plan_id,omitempty"`
+	OrganizationGUID string       `json:"organization_guid,omitempty"`
+	SpaceGUID        string       `json:"space_guid,omitempty"`
+	AppGUID          string       `json:"app_guid,omitempty"`
+	PreviousValues   *RequestBody `json:"previous_values,omitempty"`
+}
+
+func (bt BrokerTester) Services() *httptest.ResponseRecorder {
+	return bt.Get("/v2/catalog", url.Values{})
+}
+
+func (bt BrokerTester) Provision(instanceID string, body RequestBody, async bool) *httptest.ResponseRecorder {
+	bodyJSON, _ := json.Marshal(body)
+	return bt.Put(
+		"/v2/service_instances/"+instanceID,
+		bytes.NewBuffer(bodyJSON),
+		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
+	)
+}
+
+func (bt BrokerTester) Deprovision(instanceID string, async bool) *httptest.ResponseRecorder {
+	return bt.Delete(
+		"/v2/service_instances/"+instanceID,
+		nil,
+		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
+	)
+}
+
+func (bt BrokerTester) Bind(instanceID, bindingID string, body RequestBody) *httptest.ResponseRecorder {
+	bodyJSON, _ := json.Marshal(body)
+	return bt.Put(
+		fmt.Sprintf("/v2/service_instances/%s/service_bindings/%s", instanceID, bindingID),
+		bytes.NewBuffer(bodyJSON),
+		url.Values{},
+	)
+}
+
+func (bt BrokerTester) Unbind(instanceID, bindingID string, body RequestBody) *httptest.ResponseRecorder {
+	bodyJSON, _ := json.Marshal(body)
+	return bt.Delete(
+		fmt.Sprintf(
+			"/v2/service_instances/%s/service_bindings/%s",
+			instanceID,
+			bindingID,
+		),
+		bytes.NewBuffer(bodyJSON),
+		url.Values{},
+	)
+}
+
+func (bt BrokerTester) Update(instanceID string, body RequestBody, async bool) *httptest.ResponseRecorder {
+	bodyJSON, _ := json.Marshal(body)
+	return bt.Patch(
+		"/v2/service_instances/"+instanceID,
+		bytes.NewBuffer(bodyJSON),
+		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
+	)
+}
+
+func (bt BrokerTester) LastOperation(instanceID string) *httptest.ResponseRecorder {
+	return bt.Get(
+		fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
+		url.Values{},
+	)
 }
 
 func (bt BrokerTester) Get(path string, params url.Values) *httptest.ResponseRecorder {
