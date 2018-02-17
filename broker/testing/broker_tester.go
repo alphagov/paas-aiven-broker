@@ -86,10 +86,20 @@ func (bt BrokerTester) Update(instanceID string, body RequestBody, async bool) *
 	)
 }
 
-func (bt BrokerTester) LastOperation(instanceID string) *httptest.ResponseRecorder {
+func (bt BrokerTester) LastOperation(instanceID, serviceID, planID, operation string) *httptest.ResponseRecorder {
+	urlValues := url.Values{}
+	if serviceID != "" {
+		urlValues.Add("service_id", serviceID)
+	}
+	if planID != "" {
+		urlValues.Add("plan_id", planID)
+	}
+	if operation != "" {
+		urlValues.Add("operation", operation)
+	}
 	return bt.Get(
 		fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID),
-		url.Values{},
+		urlValues,
 	)
 }
 

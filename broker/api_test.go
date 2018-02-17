@@ -317,7 +317,7 @@ var _ = Describe("Broker API", func() {
 	Describe("LastOperation", func() {
 		It("provides the state of the operation", func() {
 			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "description", nil)
-			res := brokerTester.LastOperation(instanceID)
+			res := brokerTester.LastOperation(instanceID, "", "", "")
 			Expect(res.Code).To(Equal(http.StatusOK))
 
 			lastOperationResponse := brokerapi.LastOperationResponse{}
@@ -334,7 +334,7 @@ var _ = Describe("Broker API", func() {
 		It("responds with an internal server error if the provider errors", func() {
 			lastOperationError := errors.New("some last operation error")
 			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", lastOperationError)
-			res := brokerTester.LastOperation(instanceID)
+			res := brokerTester.LastOperation(instanceID, "", "", "")
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 
 			lastOperationResponse := brokerapi.LastOperationResponse{}
