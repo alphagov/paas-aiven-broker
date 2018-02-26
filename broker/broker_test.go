@@ -204,6 +204,26 @@ var _ = Describe("Broker", func() {
 			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
 		})
 
+		It("errors if the service is not in the catalog", func() {
+			config := validConfig
+			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
+			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+
+			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(err).To(MatchError("Error: service " + service1.ID + " not found in the catalog"))
+		})
+
+		It("errors if the plan is not in the catalog", func() {
+			config := validConfig
+			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
+			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
+
+			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
+
+			Expect(err).To(MatchError("Error: plan " + plan1.ID + " not found in service " + service1.ID))
+		})
+
 		It("sets a deadline by which the deprovision request should complete", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
@@ -229,6 +249,8 @@ var _ = Describe("Broker", func() {
 
 			expectedDeprovisionData := provider.DeprovisionData{
 				InstanceID: instanceID,
+				Service:    service1,
+				Plan:       plan1,
 				Details:    validDeprovisionDetails,
 			}
 

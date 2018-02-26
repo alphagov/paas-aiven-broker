@@ -100,8 +100,20 @@ func (b *Broker) Deprovision(
 	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
 	defer cancelFunc()
 
+	service, err := findServiceByID(b.config.Catalog, details.ServiceID)
+	if err != nil {
+		return brokerapi.DeprovisionServiceSpec{}, err
+	}
+
+	plan, err := findPlanByID(service, details.PlanID)
+	if err != nil {
+		return brokerapi.DeprovisionServiceSpec{}, err
+	}
+
 	deprovisionData := provider.DeprovisionData{
 		InstanceID: instanceID,
+		Service:    service,
+		Plan:       plan,
 		Details:    details,
 	}
 

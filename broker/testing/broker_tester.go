@@ -47,11 +47,15 @@ func (bt BrokerTester) Provision(instanceID string, body RequestBody, async bool
 	)
 }
 
-func (bt BrokerTester) Deprovision(instanceID string, async bool) *httptest.ResponseRecorder {
+func (bt BrokerTester) Deprovision(instanceID, serviceID, planID string, async bool) *httptest.ResponseRecorder {
 	return bt.Delete(
 		"/v2/service_instances/"+instanceID,
 		nil,
-		url.Values{"accepts_incomplete": []string{strconv.FormatBool(async)}},
+		url.Values{
+			"service_id":         []string{serviceID},
+			"plan_id":            []string{planID},
+			"accepts_incomplete": []string{strconv.FormatBool(async)},
+		},
 	)
 }
 

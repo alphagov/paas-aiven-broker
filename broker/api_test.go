@@ -21,6 +21,8 @@ var _ = Describe("Broker API", func() {
 		instanceID   string
 		orgGUID      string
 		spaceGUID    string
+		service1     string
+		plan1        string
 		validConfig  Config
 		username     string
 		password     string
@@ -35,6 +37,8 @@ var _ = Describe("Broker API", func() {
 		instanceID = "instanceID"
 		orgGUID = "org-guid"
 		spaceGUID = "space-guid"
+		service1 = "service1"
+		plan1 = "plan1"
 		validConfig = Config{
 			API: API{
 				BasicAuthUsername: username,
@@ -43,13 +47,13 @@ var _ = Describe("Broker API", func() {
 			Catalog: Catalog{brokerapi.CatalogResponse{
 				Services: []brokerapi.Service{
 					brokerapi.Service{
-						ID:            "service1",
-						Name:          "service1",
+						ID:            service1,
+						Name:          service1,
 						PlanUpdatable: true,
 						Plans: []brokerapi.ServicePlan{
 							brokerapi.ServicePlan{
-								ID:   "plan1",
-								Name: "plan1",
+								ID:   plan1,
+								Name: plan1,
 							},
 						},
 					},
@@ -84,9 +88,9 @@ var _ = Describe("Broker API", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(len(catalogResponse.Services)).To(Equal(1))
-			Expect(catalogResponse.Services[0].ID).To(Equal("service1"))
+			Expect(catalogResponse.Services[0].ID).To(Equal(service1))
 			Expect(len(catalogResponse.Services[0].Plans)).To(Equal(1))
-			Expect(catalogResponse.Services[0].Plans[0].ID).To(Equal("plan1"))
+			Expect(catalogResponse.Services[0].Plans[0].ID).To(Equal(plan1))
 		})
 	})
 
@@ -96,8 +100,8 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Provision(
 				instanceID,
 				broker_tester.RequestBody{
-					ServiceID:        "service1",
-					PlanID:           "plan1",
+					ServiceID:        service1,
+					PlanID:           plan1,
 					OrganizationGUID: orgGUID,
 					SpaceGUID:        spaceGUID,
 				},
@@ -121,8 +125,8 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Provision(
 				instanceID,
 				broker_tester.RequestBody{
-					ServiceID:        "service1",
-					PlanID:           "plan1",
+					ServiceID:        service1,
+					PlanID:           plan1,
 					OrganizationGUID: orgGUID,
 					SpaceGUID:        spaceGUID,
 				},
@@ -135,8 +139,8 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Provision(
 				instanceID,
 				broker_tester.RequestBody{
-					ServiceID:        "service1",
-					PlanID:           "plan1",
+					ServiceID:        service1,
+					PlanID:           plan1,
 					OrganizationGUID: orgGUID,
 					SpaceGUID:        spaceGUID,
 				},
@@ -149,7 +153,7 @@ var _ = Describe("Broker API", func() {
 	Describe("Deprovision", func() {
 		It("accepts a deprovision request", func() {
 			fakeProvider.DeprovisionReturns("operationData", nil)
-			res := brokerTester.Deprovision(instanceID, true)
+			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			deprovisionResponse := brokerapi.DeprovisionResponse{}
@@ -164,12 +168,12 @@ var _ = Describe("Broker API", func() {
 
 		It("responds with an internal server error if the provider errors", func() {
 			fakeProvider.DeprovisionReturns("", errors.New("some deprovisioning error"))
-			res := brokerTester.Deprovision(instanceID, true)
+			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
 
 		It("rejects requests for synchronous deprovisioning", func() {
-			res := brokerTester.Deprovision(instanceID, false)
+			res := brokerTester.Deprovision(instanceID, service1, plan1, false)
 			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
@@ -191,8 +195,8 @@ var _ = Describe("Broker API", func() {
 				instanceID,
 				bindingID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 					AppGUID:   appGUID,
 				},
 			)
@@ -214,8 +218,8 @@ var _ = Describe("Broker API", func() {
 				instanceID,
 				bindingID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 					AppGUID:   appGUID,
 				},
 			)
@@ -235,8 +239,8 @@ var _ = Describe("Broker API", func() {
 				instanceID,
 				bindingID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 				},
 			)
 			Expect(res.Code).To(Equal(http.StatusOK))
@@ -248,8 +252,8 @@ var _ = Describe("Broker API", func() {
 				instanceID,
 				bindingID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 				},
 			)
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
@@ -262,8 +266,8 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Update(
 				instanceID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 					PreviousValues: &broker_tester.RequestBody{
 						PlanID: "plan2",
 					},
@@ -287,8 +291,8 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Update(
 				instanceID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 					PreviousValues: &broker_tester.RequestBody{
 						PlanID: "plan2",
 					},
@@ -302,8 +306,8 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Update(
 				instanceID,
 				broker_tester.RequestBody{
-					ServiceID: "service1",
-					PlanID:    "plan1",
+					ServiceID: service1,
+					PlanID:    plan1,
 					PreviousValues: &broker_tester.RequestBody{
 						PlanID: "plan2",
 					},
