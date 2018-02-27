@@ -25,3 +25,17 @@ The `broker` package provides a `NewConfig` method for parsing the configuration
 ### Example
 
 A full example usage can be found in the [aws-service-broker repository](https://github.com/henrytk/aws-service-broker).
+
+## Testing
+
+Tests for this repository are run with:
+
+```
+ginkgo -r
+```
+
+They are mostly unit tests. Integration with the upstream `brokerapi` library are covered by the [API tests](broker/api_test.go).
+
+### Testing your implementation
+
+Once you have a working broker you can use the helper methods in the `broker/testing` package to test it as a broker client would.
