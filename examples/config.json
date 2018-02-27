@@ -1,0 +1,38 @@
+{
+        "basic_auth_username": "username",
+        "basic_auth_password": "password",
+        "log_level": "info",
+        "secret": "reverse-pendulum",
+        "aws_config": {
+                "region": "eu-west-1"
+        },
+        "catalog": {
+                "services": [{
+                        "id": "uuid-1",
+                        "name": "mongodb",
+                        "description": "MongoDB clusters via AWS CloudFormation",
+                        "bindable": true,
+                        "requires": [],
+                        "metadata": {},
+                        "bastion_security_group_id": "sg-xxxxxx",
+                        "key_pair_name": "key_pair_name",
+                        "vpc_id": "vpc-xxxxxx",
+                        "primary_node_subnet_id": "subnet-xxxxxx",
+                        "secondary_0_node_subnet_id": "subnet-xxxxxx",
+                        "secondary_1_node_subnet_id": "subnet-xxxxxx",
+                        "plans": [{
+                                "id": "uuid-2",
+                                "name": "basic",
+                                "description": "No replicas. Disk: 400GB gp2. Instance: m4.large",
+                                "metadata": {},
+                                "cluster_replica_set_count": "1"
+                        },{
+                                "id": "uuid-2",
+                                "name": "replica-set-3",
+                                "description": "A replica set of 3 instances. Disk: 400GB gp2. Instance: m4.large",
+                                "metadata": {},
+                                "cluster_replica_set_count": "3"
+                        }]
+                }]
+        }
+}
