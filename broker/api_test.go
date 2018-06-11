@@ -7,9 +7,9 @@ import (
 	"net/url"
 
 	"code.cloudfoundry.org/lager"
-	. "github.com/henrytk/universal-service-broker/broker"
-	broker_tester "github.com/henrytk/universal-service-broker/broker/testing"
-	"github.com/henrytk/universal-service-broker/provider/fakes"
+	. "github.com/alphagov/paas-aiven-broker/broker"
+	broker_tester "github.com/alphagov/paas-aiven-broker/broker/testing"
+	"github.com/alphagov/paas-aiven-broker/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	. "github.com/onsi/ginkgo"

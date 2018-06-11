@@ -6,9 +6,9 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/lager"
-	. "github.com/henrytk/universal-service-broker/broker"
-	"github.com/henrytk/universal-service-broker/provider"
-	"github.com/henrytk/universal-service-broker/provider/fakes"
+	. "github.com/alphagov/paas-aiven-broker/broker"
+	"github.com/alphagov/paas-aiven-broker/provider"
+	"github.com/alphagov/paas-aiven-broker/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	. "github.com/onsi/ginkgo"

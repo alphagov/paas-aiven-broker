@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"code.cloudfoundry.org/lager"
-	. "github.com/henrytk/universal-service-broker/broker"
+	. "github.com/alphagov/paas-aiven-broker/broker"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
