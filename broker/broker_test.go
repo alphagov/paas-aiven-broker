@@ -195,15 +195,6 @@ var _ = Describe("Broker", func() {
 			Expect(log).To(gbytes.Say("deprovision-start"))
 		})
 
-		It("errors if async isn't allowed", func() {
-			b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
-			asyncAllowed := false
-
-			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, asyncAllowed)
-
-			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
-		})
-
 		It("errors if the service is not in the catalog", func() {
 			config := validConfig
 			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
@@ -285,7 +276,7 @@ var _ = Describe("Broker", func() {
 
 			Expect(b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)).
 				To(Equal(brokerapi.DeprovisionServiceSpec{
-					IsAsync:       true,
+					IsAsync:       false,
 					OperationData: "operation data",
 				}))
 		})
