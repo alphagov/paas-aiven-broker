@@ -82,7 +82,7 @@ func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData La
 
 func BuildServiceName(prefix, guid string) string {
 	checksum := crc32.ChecksumIEEE([]byte(guid))
-	return fmt.Sprintf("%s-%x", prefix, checksum)
+	return fmt.Sprintf("%s%x", prefix, checksum)
 }
 
 func ProviderStatesMapping(status aiven.ServiceStatus) (brokerapi.LastOperationState, string) {

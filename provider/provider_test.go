@@ -59,7 +59,7 @@ var _ = Describe("Provider", func() {
 			expectedParameters := &aiven.CreateServiceInput{
 				Cloud:       "aws-eu-west-1",
 				Plan:        "startup-1",
-				ServiceName: "env-69bc39f8",
+				ServiceName: "env69bc39f8",
 				ServiceType: "elasticsearch",
 				UserConfig: aiven.UserConfig{
 					ElasticsearchVersion: "6",
@@ -89,7 +89,7 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.DeleteServiceCallCount()).To(Equal(1))
 
 			expectedParameters := &aiven.DeleteServiceInput{
-				ServiceName: "env-69bc39f8",
+				ServiceName: "env69bc39f8",
 			}
 			Expect(fakeAivenClient.DeleteServiceArgsForCall(0)).To(Equal(expectedParameters))
 		})
@@ -108,7 +108,7 @@ var _ = Describe("Provider", func() {
 	Describe("LastOperation", func() {
 		It("should return succeeded when the service is running", func() {
 			expectedParameters := &aiven.GetServiceStatusInput{
-				ServiceName: "env-69bc39f8",
+				ServiceName: "env69bc39f8",
 			}
 
 			lastOperationData := provider.LastOperationData{

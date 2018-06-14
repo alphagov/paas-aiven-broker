@@ -73,10 +73,10 @@ func DecodeConfig(b []byte) (*Config, error) {
 	}
 
 	// Aiven only allow 16 characters for the service name. The instanceID from Cloud Foundry
-	// is hashed with crc32, then represented as 8 hexadecimal digits: this gives us 7
-	// characters, plus one for the hyphen.
-	if len(config.ServiceNamePrefix) > 7 {
-		return config, errors.New("Config error: service name prefix cannot be longer than 7 characters")
+	// is hashed with crc32, then represented as 8 hexadecimal digits: this gives us 8
+	// characters.
+	if len(config.ServiceNamePrefix) > 8 {
+		return config, errors.New("Config error: service name prefix cannot be longer than 8 characters")
 	}
 
 	config.APIToken = os.Getenv("AIVEN_API_TOKEN")
