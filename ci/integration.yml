@@ -1,0 +1,27 @@
+---
+platform: linux
+image_resource:
+  type: docker-image
+  source:
+    repository: governmentpaas/cf-acceptance-tests
+    tag: c88f3e0b03558c987693fad3f180d9052b77342c
+inputs:
+  - name: repo
+  - name: secrets
+run:
+  path: sh
+  args:
+    - -e
+    - -c
+    - |
+      AIVEN_API_TOKEN="$(awk -F':' '$1 ~ /aiven_api_token/ {print $2}' "./secrets/$SECRETS_FILE" | sed -e 's/^\s*//')"
+      export AIVEN_API_TOKEN
+      AIVEN_PROJECT="$(awk -F':' '$1 ~ /aiven_project/ {print $2}' "./secrets/$SECRETS_FILE" | sed -e 's/^\s*//')"
+      export AIVEN_PROJECT
+      SERVICE_NAME_PREFIX=test
+      export SERVICE_NAME_PREFIX
+
+      mkdir -p "${GOPATH}/src/github.com/alphagov/paas-aiven-broker"
+      rsync -az repo/ "${GOPATH}/src/github.com/alphagov/paas-aiven-broker/"
+      cd "${GOPATH}/src/github.com/alphagov/paas-aiven-broker"
+      make integration
