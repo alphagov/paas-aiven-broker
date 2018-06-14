@@ -4,7 +4,7 @@ sudo: false
 language: go
 
 go:
-  - 1.9
+  - "1.10"
 
 before_install:
   - go get github.com/onsi/ginkgo/ginkgo
@@ -14,4 +14,4 @@ install:
   - true
 
 script:
-  - ginkgo -r
+  - make unit
