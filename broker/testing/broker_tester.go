@@ -77,7 +77,10 @@ func (bt BrokerTester) Unbind(instanceID, bindingID string, body RequestBody) *h
 			bindingID,
 		),
 		bytes.NewBuffer(bodyJSON),
-		url.Values{},
+		url.Values{
+			"service_id": []string{body.ServiceID},
+			"plan_id":    []string{body.PlanID},
+		},
 	)
 }
 
@@ -126,6 +129,7 @@ func (bt BrokerTester) Delete(path string, body io.Reader, params url.Values) *h
 func (bt BrokerTester) newRequest(method, path string, body io.Reader, params url.Values) *http.Request {
 	url := fmt.Sprintf("http://%s", "127.0.0.1:8080"+path)
 	req := httptest.NewRequest(method, url, body)
+	req.Header.Set("X-Broker-API-Version", "2.13")
 	req.URL.RawQuery = params.Encode()
 	return req
 }

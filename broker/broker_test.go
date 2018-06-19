@@ -6,9 +6,9 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/lager"
-	. "github.com/henrytk/universal-service-broker/broker"
-	"github.com/henrytk/universal-service-broker/provider"
-	"github.com/henrytk/universal-service-broker/provider/fakes"
+	. "github.com/alphagov/paas-aiven-broker/broker"
+	"github.com/alphagov/paas-aiven-broker/provider"
+	"github.com/alphagov/paas-aiven-broker/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	. "github.com/onsi/ginkgo"
@@ -195,15 +195,6 @@ var _ = Describe("Broker", func() {
 			Expect(log).To(gbytes.Say("deprovision-start"))
 		})
 
-		It("errors if async isn't allowed", func() {
-			b := New(validConfig, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
-			asyncAllowed := false
-
-			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, asyncAllowed)
-
-			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
-		})
-
 		It("errors if the service is not in the catalog", func() {
 			config := validConfig
 			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
@@ -285,7 +276,7 @@ var _ = Describe("Broker", func() {
 
 			Expect(b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)).
 				To(Equal(brokerapi.DeprovisionServiceSpec{
-					IsAsync:       true,
+					IsAsync:       false,
 					OperationData: "operation data",
 				}))
 		})

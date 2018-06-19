@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/henrytk/universal-service-broker/provider"
+	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 

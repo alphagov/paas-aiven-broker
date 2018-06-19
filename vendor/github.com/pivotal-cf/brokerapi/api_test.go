@@ -1,3 +1,18 @@
+// Copyright (C) 2015-Present Pivotal Software, Inc. All rights reserved.
+
+// This program and the accompanying materials are made available under
+// the terms of the under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+// http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package brokerapi_test
 
 import (
@@ -24,6 +39,7 @@ var _ = Describe("Service Broker API", func() {
 	var fakeServiceBroker *fakes.FakeServiceBroker
 	var brokerAPI http.Handler
 	var brokerLogger *lagertest.TestLogger
+	var apiVersion string
 	var credentials = brokerapi.BrokerCredentials{
 		Username: "username",
 		Password: "password",
@@ -40,6 +56,9 @@ var _ = Describe("Service Broker API", func() {
 			request, err := http.NewRequest("PUT", path, buffer)
 			Expect(err).NotTo(HaveOccurred())
 			request.Header.Add("Content-Type", "application/json")
+			if apiVersion != "" {
+				request.Header.Add("X-Broker-API-Version", apiVersion)
+			}
 			request.SetBasicAuth(credentials.Username, credentials.Password)
 
 			response = r.Do(request)
@@ -71,8 +90,11 @@ var _ = Describe("Service Broker API", func() {
 	}
 
 	BeforeEach(func() {
+		apiVersion = "2.14"
 		fakeServiceBroker = &fakes.FakeServiceBroker{
 			InstanceLimit: 3,
+			ServiceID:     "0A789746-596F-4CEA-BFAC-A0795DA056E3",
+			PlanID:        "plan-id",
 		}
 		brokerLogger = lagertest.NewTestLogger("broker-api")
 		brokerAPI = brokerapi.New(fakeServiceBroker, brokerLogger, credentials)
@@ -97,12 +119,14 @@ var _ = Describe("Service Broker API", func() {
 
 	Describe("request context", func() {
 		var (
-			ctx context.Context
+			ctx     context.Context
+			reqBody string
 		)
 
 		makeRequest := func(method, path, body string) *httptest.ResponseRecorder {
 			recorder := httptest.NewRecorder()
 			request, _ := http.NewRequest(method, path, strings.NewReader(body))
+			request.Header.Add("X-Broker-API-Version", "2.13")
 			request.SetBasicAuth(credentials.Username, credentials.Password)
 			request = request.WithContext(ctx)
 			brokerAPI.ServeHTTP(recorder, request)
@@ -111,6 +135,7 @@ var _ = Describe("Service Broker API", func() {
 
 		BeforeEach(func() {
 			ctx = context.WithValue(context.Background(), "test_context", true)
+			reqBody = fmt.Sprintf(`{"service_id":"%s","plan_id":"456"}`, fakeServiceBroker.ServiceID)
 		})
 
 		Specify("a catalog endpoint which passes the request context to the broker", func() {
@@ -119,27 +144,27 @@ var _ = Describe("Service Broker API", func() {
 		})
 
 		Specify("a provision endpoint which passes the request context to the broker", func() {
-			makeRequest("PUT", "/v2/service_instances/instance-id", "{}")
+			makeRequest("PUT", "/v2/service_instances/instance-id", reqBody)
 			Expect(fakeServiceBroker.ReceivedContext).To(BeTrue())
 		})
 
 		Specify("a deprovision endpoint which passes the request context to the broker", func() {
-			makeRequest("DELETE", "/v2/service_instances/instance-id", "")
+			makeRequest("DELETE", "/v2/service_instances/instance-id?service_id=asdf&plan_id=fdsa", "")
 			Expect(fakeServiceBroker.ReceivedContext).To(BeTrue())
 		})
 
 		Specify("a bind endpoint which passes the request context to the broker", func() {
-			makeRequest("PUT", "/v2/service_instances/instance-id/service_bindings/binding-id", "{}")
+			makeRequest("PUT", "/v2/service_instances/instance-id/service_bindings/binding-id", reqBody)
 			Expect(fakeServiceBroker.ReceivedContext).To(BeTrue())
 		})
 
 		Specify("an unbind endpoint which passes the request context to the broker", func() {
-			makeRequest("DELETE", "/v2/service_instances/instance-id/service_bindings/binding-id", "")
+			makeRequest("DELETE", "/v2/service_instances/instance-id/service_bindings/binding-id?plan_id=plan-id&service_id=service-id", "")
 			Expect(fakeServiceBroker.ReceivedContext).To(BeTrue())
 		})
 
 		Specify("an update endpoint which passes the request context to the broker", func() {
-			makeRequest("PATCH", "/v2/service_instances/instance-id", "{}")
+			makeRequest("PATCH", "/v2/service_instances/instance-id", `{"service_id":"123"}`)
 			Expect(fakeServiceBroker.ReceivedContext).To(BeTrue())
 		})
 
@@ -212,33 +237,60 @@ var _ = Describe("Service Broker API", func() {
 	})
 
 	Describe("catalog endpoint", func() {
-		makeCatalogRequest := func() *testflight.Response {
-			response := &testflight.Response{}
-			testflight.WithServer(brokerAPI, func(r *testflight.Requester) {
-				request, _ := http.NewRequest("GET", "/v2/catalog", nil)
-				request.SetBasicAuth("username", "password")
-
-				response = r.Do(request)
-			})
-			return response
+		makeCatalogRequest := func(apiVersion string, fail bool) *httptest.ResponseRecorder {
+			recorder := httptest.NewRecorder()
+			request, _ := http.NewRequest(http.MethodGet, "/v2/catalog", nil)
+			if apiVersion != "" {
+				request.Header.Add("X-Broker-API-Version", apiVersion)
+			}
+			request.SetBasicAuth(credentials.Username, credentials.Password)
+			ctx := context.Background()
+			if fail {
+				ctx = context.WithValue(ctx, "fails", true)
+			}
+			request = request.WithContext(ctx)
+			brokerAPI.ServeHTTP(recorder, request)
+			return recorder
 		}
 
 		It("returns a 200", func() {
-			response := makeCatalogRequest()
-			Expect(response.StatusCode).To(Equal(200))
+			response := makeCatalogRequest("2.14", false)
+			Expect(response.Code).To(Equal(200))
 		})
 
 		It("returns valid catalog json", func() {
-			response := makeCatalogRequest()
+			response := makeCatalogRequest("2.14", false)
 			Expect(response.Body).To(MatchJSON(fixture("catalog.json")))
+		})
+
+		It("returns a 500", func() {
+			response := makeCatalogRequest("2.14", true)
+			Expect(response.Code).To(Equal(500))
+			Expect(response.Body.String()).To(MatchJSON(`{ "description": "something went wrong!" }`))
+		})
+
+		Context("the request is malformed", func() {
+			It("missing header X-Broker-API-Version", func() {
+				response := makeCatalogRequest("", false)
+				Expect(response.Code).To(Equal(412))
+				Expect(lastLogLine().Message).To(ContainSubstring(".catalog.broker-api-version-invalid"))
+				Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+			})
+
+			It("has wrong version of API", func() {
+				response := makeCatalogRequest("1.14", false)
+				Expect(response.Code).To(Equal(412))
+				Expect(lastLogLine().Message).To(ContainSubstring(".catalog.broker-api-version-invalid"))
+				Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
+			})
 		})
 	})
 
 	Describe("instance lifecycle endpoint", func() {
-		makeInstanceDeprovisioningRequest := func(instanceID, queryString string) *testflight.Response {
+		makeInstanceDeprovisioningRequestFull := func(instanceID, serviceID, planID, queryString string) *testflight.Response {
 			response := &testflight.Response{}
 			testflight.WithServer(brokerAPI, func(r *testflight.Requester) {
-				path := fmt.Sprintf("/v2/service_instances/%s?plan_id=plan-id&service_id=service-id", instanceID)
+				path := fmt.Sprintf("/v2/service_instances/%s?plan_id=%s&service_id=%s", instanceID, planID, serviceID)
 				if queryString != "" {
 					path = fmt.Sprintf("%s&%s", path, queryString)
 				}
@@ -246,11 +298,15 @@ var _ = Describe("Service Broker API", func() {
 				Expect(err).NotTo(HaveOccurred())
 				request.Header.Add("Content-Type", "application/json")
 				request.SetBasicAuth("username", "password")
-
+				request.Header.Add("X-Broker-API-Version", apiVersion)
 				response = r.Do(request)
 
 			})
 			return response
+		}
+
+		makeInstanceDeprovisioningRequest := func(instanceID, queryString string) *testflight.Response {
+			return makeInstanceDeprovisioningRequestFull(instanceID, "service-id", "plan-id", queryString)
 		}
 
 		Describe("provisioning", func() {
@@ -260,7 +316,7 @@ var _ = Describe("Service Broker API", func() {
 			BeforeEach(func() {
 				instanceID = uniqueInstanceID()
 				provisionDetails = map[string]interface{}{
-					"service_id":        "service-id",
+					"service_id":        fakeServiceBroker.ServiceID,
 					"plan_id":           "plan-id",
 					"organization_guid": "organization-guid",
 					"space_guid":        "space-guid",
@@ -270,7 +326,7 @@ var _ = Describe("Service Broker API", func() {
 			It("calls Provision on the service broker with all params", func() {
 				makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
 				Expect(fakeServiceBroker.ProvisionDetails).To(Equal(brokerapi.ProvisionDetails{
-					ServiceID:        "service-id",
+					ServiceID:        fakeServiceBroker.ServiceID,
 					PlanID:           "plan-id",
 					OrganizationGUID: "organization-guid",
 					SpaceGUID:        "space-guid",
@@ -287,6 +343,8 @@ var _ = Describe("Service Broker API", func() {
 					fakeServiceBroker = &fakes.FakeServiceBroker{
 						InstanceLimit:         3,
 						OperationDataToReturn: "some-operation-data",
+						ServiceID:             fakeServiceBroker.ServiceID,
+						PlanID:                fakeServiceBroker.PlanID,
 					}
 					fakeAsyncServiceBroker := &fakes.FakeAsyncServiceBroker{
 						FakeServiceBroker:    *fakeServiceBroker,
@@ -313,11 +371,11 @@ var _ = Describe("Service Broker API", func() {
 						"array":  []interface{}{"a", "b", "c"},
 					}
 					rawParams = `{
-						"string":"some-string",
-						"number":1,
-						"object": { "Name": "some-name" },
-						"array": [ "a", "b", "c" ]
-					}`
+					"string":"some-string",
+					"number":1,
+					"object": { "Name": "some-name" },
+					"array": [ "a", "b", "c" ]
+				}`
 					provisionDetails["context"] = map[string]interface{}{
 						"platform":      "fake-platform",
 						"serial-number": 12648430,
@@ -325,11 +383,11 @@ var _ = Describe("Service Broker API", func() {
 						"array":         []interface{}{"1", "2", "3"},
 					}
 					rawCtx = `{
-						"platform":"fake-platform",
-						"serial-number":12648430,
-						"object": {"Name":"parameter"},
-						"array":[ "1", "2", "3" ]
-					}`
+					"platform":"fake-platform",
+					"serial-number":12648430,
+					"object": {"Name":"parameter"},
+					"array":[ "1", "2", "3" ]
+				}`
 				})
 
 				It("calls Provision on the service broker with all params", func() {
@@ -480,6 +538,9 @@ var _ = Describe("Service Broker API", func() {
 							request, err := http.NewRequest("PUT", path, body)
 							Expect(err).NotTo(HaveOccurred())
 							request.Header.Add("Content-Type", "application/json")
+							if apiVersion != "" {
+								request.Header.Add("X-Broker-Api-Version", apiVersion)
+							}
 							request.SetBasicAuth(credentials.Username, credentials.Password)
 
 							response = r.Do(request)
@@ -528,7 +589,7 @@ var _ = Describe("Service Broker API", func() {
 						acceptsIncomplete := true
 						makeInstanceProvisioningRequestWithAcceptsIncomplete(instanceID, provisionDetails, acceptsIncomplete)
 						Expect(fakeServiceBroker.ProvisionDetails).To(Equal(brokerapi.ProvisionDetails{
-							ServiceID:        "service-id",
+							ServiceID:        fakeServiceBroker.ServiceID,
 							PlanID:           "plan-id",
 							OrganizationGUID: "organization-guid",
 							SpaceGUID:        "space-guid",
@@ -541,6 +602,8 @@ var _ = Describe("Service Broker API", func() {
 						BeforeEach(func() {
 							fakeServiceBroker = &fakes.FakeServiceBroker{
 								InstanceLimit: 3,
+								ServiceID:     fakeServiceBroker.ServiceID,
+								PlanID:        fakeServiceBroker.PlanID,
 							}
 							fakeAsyncServiceBroker := &fakes.FakeAsyncServiceBroker{
 								FakeServiceBroker:    *fakeServiceBroker,
@@ -559,6 +622,8 @@ var _ = Describe("Service Broker API", func() {
 						BeforeEach(func() {
 							fakeServiceBroker = &fakes.FakeServiceBroker{
 								InstanceLimit: 3,
+								ServiceID:     fakeServiceBroker.ServiceID,
+								PlanID:        fakeServiceBroker.PlanID,
 							}
 							fakeAsyncServiceBroker := &fakes.FakeAsyncServiceBroker{
 								FakeServiceBroker:    *fakeServiceBroker,
@@ -584,6 +649,8 @@ var _ = Describe("Service Broker API", func() {
 						BeforeEach(func() {
 							fakeServiceBroker = &fakes.FakeServiceBroker{
 								InstanceLimit: 3,
+								ServiceID:     fakeServiceBroker.ServiceID,
+								PlanID:        fakeServiceBroker.PlanID,
 							}
 							fakeAsyncServiceBroker := &fakes.FakeAsyncOnlyServiceBroker{
 								FakeServiceBroker: *fakeServiceBroker,
@@ -610,6 +677,8 @@ var _ = Describe("Service Broker API", func() {
 						BeforeEach(func() {
 							fakeServiceBroker = &fakes.FakeServiceBroker{
 								InstanceLimit: 3,
+								ServiceID:     fakeServiceBroker.ServiceID,
+								PlanID:        fakeServiceBroker.PlanID,
 							}
 							fakeAsyncServiceBroker := &fakes.FakeAsyncOnlyServiceBroker{
 								FakeServiceBroker: *fakeServiceBroker,
@@ -626,6 +695,56 @@ var _ = Describe("Service Broker API", func() {
 					})
 				})
 			})
+
+			Context("the request is malformed", func() {
+				It("missing header X-Broker-API-Version", func() {
+					apiVersion = ""
+					response := makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".provision.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+				})
+
+				It("has wrong version of API", func() {
+					apiVersion = "1.14"
+					response := makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".provision.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
+				})
+
+				It("missing service_id", func() {
+					delete(provisionDetails, "service_id")
+					response := makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".provision.service-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("service_id missing"))
+				})
+
+				It("missing plan_id", func() {
+					delete(provisionDetails, "plan_id")
+					response := makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".provision.plan-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("plan_id missing"))
+				})
+
+				It("service_id not in the catalog", func() {
+					provisionDetails["service_id"] = "not-in-the-catalogue"
+					response := makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".provision.invalid-service-id"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("service-id not in the catalog"))
+				})
+
+				It("plan_id not in the catalog", func() {
+					provisionDetails["plan_id"] = "not-in-the-catalogue"
+					response := makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".provision.invalid-plan-id"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("plan-id not in the catalog"))
+				})
+			})
 		})
 
 		Describe("updating", func() {
@@ -633,11 +752,10 @@ var _ = Describe("Service Broker API", func() {
 				instanceID  string
 				details     map[string]interface{}
 				queryString string
-
-				response *testflight.Response
+				response    *testflight.Response
 			)
 
-			makeInstanceUpdateRequest := func(instanceID string, details map[string]interface{}, queryString string) *testflight.Response {
+			makeInstanceUpdateRequest := func(instanceID string, details map[string]interface{}, queryString string, apiVersion string) *testflight.Response {
 				response := &testflight.Response{}
 
 				testflight.WithServer(brokerAPI, func(r *testflight.Requester) {
@@ -647,6 +765,9 @@ var _ = Describe("Service Broker API", func() {
 					json.NewEncoder(buffer).Encode(details)
 					request, err := http.NewRequest("PATCH", path, buffer)
 					Expect(err).NotTo(HaveOccurred())
+					if apiVersion != "" {
+						request.Header.Add("X-Broker-Api-Version", apiVersion)
+					}
 					request.Header.Add("Content-Type", "application/json")
 					request.SetBasicAuth(credentials.Username, credentials.Password)
 
@@ -669,11 +790,39 @@ var _ = Describe("Service Broker API", func() {
 						"organization_id": "org-id",
 						"space_id":        "space-id",
 					},
+					"context": map[string]interface{}{
+						"new-context": "new-context-value",
+					},
 				}
+				queryString = "?accept_incomplete=true"
 			})
 
 			JustBeforeEach(func() {
-				response = makeInstanceUpdateRequest(instanceID, details, queryString)
+				response = makeInstanceUpdateRequest(instanceID, details, queryString, "2.14")
+			})
+
+			Context("the request is malformed", func() {
+				It("missing header X-Broker-API-Version", func() {
+					response := makeInstanceUpdateRequest("instance-id", details, queryString, "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".update.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+				})
+
+				It("has wrong version of API", func() {
+					response := makeInstanceUpdateRequest("instance-id", details, queryString, "1.14")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".update.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
+				})
+
+				It("missing service-id", func() {
+					delete(details, "service_id")
+					response := makeInstanceUpdateRequest("instance-id", details, queryString, "2.14")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".update.service-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("service_id missing"))
+				})
 			})
 
 			Context("when the broker returns no error", func() {
@@ -708,6 +857,12 @@ var _ = Describe("Service Broker API", func() {
 						detailsWithRawParameters := brokerapi.DetailsWithRawParameters(fakeServiceBroker.UpdateDetails)
 						rawParameters := detailsWithRawParameters.GetRawParameters()
 						Expect(rawParameters).To(Equal(json.RawMessage(`{"new-param":"new-param-value"}`)))
+					})
+
+					It("calls update with details with raw context", func() {
+						Expect(fakeServiceBroker.UpdateDetails.RawContext).To(
+							Equal(json.RawMessage(`{"new-context":"new-context-value"}`)),
+						)
 					})
 
 					Context("when accepts_incomplete=true", func() {
@@ -821,6 +976,7 @@ var _ = Describe("Service Broker API", func() {
 					instanceID = uniqueInstanceID()
 
 					provisionDetails = map[string]interface{}{
+						"service_id":        fakeServiceBroker.ServiceID,
 						"plan_id":           "plan-id",
 						"organization_guid": "organization-guid",
 						"space_guid":        "space-guid",
@@ -1007,6 +1163,38 @@ var _ = Describe("Service Broker API", func() {
 					})
 				})
 			})
+
+			Context("the request is malformed", func() {
+				It("missing header X-Broker-API-Version", func() {
+					apiVersion = ""
+					response := makeInstanceDeprovisioningRequestFull("instance-id", "service-id", "plan-id", "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".deprovision.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+				})
+
+				It("has wrong version of API", func() {
+					apiVersion = "1.1"
+					response := makeInstanceDeprovisioningRequestFull("instance-id", "service-id", "plan-id", "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".deprovision.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
+				})
+
+				It("missing service-id", func() {
+					response := makeInstanceDeprovisioningRequestFull("instance-id", "", "plan-id", "")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".deprovision.service-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("service_id missing"))
+				})
+
+				It("missing plan-id", func() {
+					response := makeInstanceDeprovisioningRequestFull("instance-id", "service-id", "", "")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".deprovision.plan-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("plan_id missing"))
+				})
+			})
 		})
 	})
 
@@ -1027,8 +1215,10 @@ var _ = Describe("Service Broker API", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 
+				if apiVersion != "" {
+					request.Header.Add("X-Broker-Api-Version", apiVersion)
+				}
 				request.Header.Add("Content-Type", "application/json")
-				request.Header.Add("X-Broker-Api-Version", apiVersion)
 				request.SetBasicAuth("username", "password")
 
 				response = r.Do(request)
@@ -1058,6 +1248,40 @@ var _ = Describe("Service Broker API", func() {
 						"new-param": "new-param-value",
 					},
 				}
+			})
+
+			Context("the request is malformed", func() {
+				BeforeEach(func() {
+					bindingID = uniqueBindingID()
+				})
+
+				It("missing header X-Broker-API-Version", func() {
+					response := makeBindingRequestWithSpecificAPIVersion(instanceID, bindingID, map[string]interface{}{}, "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".bind.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+				})
+
+				It("has wrong version of API", func() {
+					response := makeBindingRequestWithSpecificAPIVersion(instanceID, bindingID, map[string]interface{}{}, "1.14")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".bind.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
+				})
+
+				It("missing service-id", func() {
+					response := makeBindingRequestWithSpecificAPIVersion(instanceID, bindingID, map[string]interface{}{"plan_id": "123"}, "2.14")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".bind.service-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("service_id missing"))
+				})
+
+				It("missing plan-id", func() {
+					response := makeBindingRequestWithSpecificAPIVersion(instanceID, bindingID, map[string]interface{}{"service_id": "123"}, "2.14")
+					Expect(response.StatusCode).To(Equal(400))
+					Expect(lastLogLine().Message).To(ContainSubstring(".bind.plan-id-missing"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("plan_id missing"))
+				})
 			})
 
 			Context("when the associated instance exists", func() {
@@ -1183,11 +1407,11 @@ var _ = Describe("Service Broker API", func() {
 							"array": [ "a", "b", "c" ]
 						}`
 						rawCtx = `{
-						"platform":"fake-platform",
-						"serial-number":12648430,
-						"object": {"Name":"parameter"},
-						"array":[ "1", "2", "3" ]
-					}`
+							"platform":"fake-platform",
+							"serial-number":12648430,
+							"object": {"Name":"parameter"},
+							"array":[ "1", "2", "3" ]
+						}`
 					})
 
 					It("calls Bind on the service broker with all params", func() {
@@ -1210,31 +1434,41 @@ var _ = Describe("Service Broker API", func() {
 					})
 				})
 
-				Context("when there is a app_guid in the bind_resource", func() {
-					BeforeEach(func() {
-						details["bind_resource"] = map[string]interface{}{"app_guid": "a-guid"}
-					})
+				When("there are details in the bind_resource", func() {
 
 					It("calls Bind on the service broker with the bind_resource", func() {
+
+						details["bind_resource"] = map[string]interface{}{
+							"app_guid": "a-guid",
+							"space_guid": "a-space-guid",
+							"route": "route.cf-apps.com",
+							"credential_client_id": "some-credentials",
+						}
+
 						makeBindingRequest(instanceID, bindingID, details)
 						Expect(fakeServiceBroker.BoundBindingDetails.BindResource).NotTo(BeNil())
 						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.AppGuid).To(Equal("a-guid"))
-						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.Route).To(BeEmpty())
+						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.SpaceGuid).To(Equal("a-space-guid"))
+						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.Route).To(Equal("route.cf-apps.com"))
+						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.CredentialClientID).To(Equal("some-credentials"))
 					})
 				})
 
-				Context("when there is a route in the bind_resource", func() {
-					BeforeEach(func() {
-						details["bind_resource"] = map[string]interface{}{"route": "route.cf-apps.com"}
-					})
+				When("there are no details in the bind_resource", func() {
 
-					It("calls Bind on the service broker with the bind_resource", func() {
+					It("calls Bind on the service broker with an empty bind_resource", func() {
+
+						details["bind_resource"] = map[string]interface{}{}
+
 						makeBindingRequest(instanceID, bindingID, details)
 						Expect(fakeServiceBroker.BoundBindingDetails.BindResource).NotTo(BeNil())
-						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.Route).To(Equal("route.cf-apps.com"))
 						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.AppGuid).To(BeEmpty())
+						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.SpaceGuid).To(BeEmpty())
+						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.Route).To(BeEmpty())
+						Expect(fakeServiceBroker.BoundBindingDetails.BindResource.CredentialClientID).To(BeEmpty())
 					})
 				})
+
 			})
 
 			Context("when the associated instance does not exist", func() {
@@ -1336,18 +1570,23 @@ var _ = Describe("Service Broker API", func() {
 		})
 
 		Describe("unbinding", func() {
-			makeUnbindingRequest := func(instanceID string, bindingID string) *testflight.Response {
+			makeUnbindingRequestWithServiceIDPlanID := func(instanceID, bindingID, serviceID, planID, apiVersion string) *testflight.Response {
 				response := &testflight.Response{}
 				testflight.WithServer(brokerAPI, func(r *testflight.Requester) {
-					path := fmt.Sprintf("/v2/service_instances/%s/service_bindings/%s?plan_id=plan-id&service_id=service-id",
-						instanceID, bindingID)
+					path := fmt.Sprintf("/v2/service_instances/%s/service_bindings/%s?plan_id=%s&service_id=%s",
+						instanceID, bindingID, planID, serviceID)
 					request, _ := http.NewRequest("DELETE", path, strings.NewReader(""))
 					request.Header.Add("Content-Type", "application/json")
+					request.Header.Add("X-Broker-API-Version", apiVersion)
 					request.SetBasicAuth("username", "password")
 
 					response = r.Do(request)
 				})
 				return response
+			}
+
+			makeUnbindingRequest := func(instanceID string, bindingID string) *testflight.Response {
+				return makeUnbindingRequestWithServiceIDPlanID(instanceID, bindingID, "service-id", "plan-id", "2.13")
 			}
 
 			Context("when the associated instance exists", func() {
@@ -1357,6 +1596,7 @@ var _ = Describe("Service Broker API", func() {
 				BeforeEach(func() {
 					instanceID = uniqueInstanceID()
 					provisionDetails = map[string]interface{}{
+						"service_id":        fakeServiceBroker.ServiceID,
 						"plan_id":           "plan-id",
 						"organization_guid": "organization-guid",
 						"space_guid":        "space-guid",
@@ -1364,12 +1604,51 @@ var _ = Describe("Service Broker API", func() {
 					makeInstanceProvisioningRequest(instanceID, provisionDetails, "")
 				})
 
-				Context("and the binding exists", func() {
+				Context("the request is malformed", func() {
 					var bindingID string
 
 					BeforeEach(func() {
 						bindingID = uniqueBindingID()
 						makeBindingRequest(instanceID, bindingID, map[string]interface{}{})
+					})
+
+					It("missing header X-Broker-API-Version", func() {
+						response := makeUnbindingRequestWithServiceIDPlanID(instanceID, bindingID, "service-id", "plan-id", "")
+						Expect(response.StatusCode).To(Equal(412))
+						Expect(lastLogLine().Message).To(ContainSubstring(".unbind.broker-api-version-invalid"))
+						Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+					})
+
+					It("has wrong version of API", func() {
+						response := makeUnbindingRequestWithServiceIDPlanID(instanceID, bindingID, "service-id", "plan-id", "1.1")
+						Expect(response.StatusCode).To(Equal(412))
+						Expect(lastLogLine().Message).To(ContainSubstring(".unbind.broker-api-version-invalid"))
+						Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
+					})
+
+					It("missing service-id", func() {
+						response := makeUnbindingRequestWithServiceIDPlanID(instanceID, bindingID, "", "plan-id", "2.13")
+						Expect(response.StatusCode).To(Equal(400))
+						Expect(lastLogLine().Message).To(ContainSubstring(".unbind.service-id-missing"))
+						Expect(lastLogLine().Data["error"]).To(ContainSubstring("service_id missing"))
+					})
+
+					It("missing plan-id", func() {
+						response := makeUnbindingRequestWithServiceIDPlanID(instanceID, bindingID, "service-id", "", "2.13")
+						Expect(response.StatusCode).To(Equal(400))
+						Expect(lastLogLine().Message).To(ContainSubstring(".unbind.plan-id-missing"))
+						Expect(lastLogLine().Data["error"]).To(ContainSubstring("plan_id missing"))
+					})
+				})
+
+				Context("and the binding exists", func() {
+					var bindingID string
+
+					BeforeEach(func() {
+						bindingID = uniqueBindingID()
+						makeBindingRequest(instanceID, bindingID, map[string]interface{}{
+							"service_id": "service_id", "plan_id": "plan_id",
+						})
 					})
 
 					It("returns a 200", func() {
@@ -1482,7 +1761,7 @@ var _ = Describe("Service Broker API", func() {
 		})
 
 		Describe("last_operation", func() {
-			makeLastOperationRequest := func(instanceID, operationData string) *testflight.Response {
+			makeLastOperationRequest := func(instanceID, operationData, apiVersion string) *testflight.Response {
 				response := &testflight.Response{}
 				testflight.WithServer(brokerAPI, func(r *testflight.Requester) {
 					path := fmt.Sprintf("/v2/service_instances/%s/last_operation", instanceID)
@@ -1491,6 +1770,9 @@ var _ = Describe("Service Broker API", func() {
 					}
 
 					request, _ := http.NewRequest("GET", path, strings.NewReader(""))
+					if apiVersion != "" {
+						request.Header.Add("X-Broker-API-Version", apiVersion)
+					}
 					request.Header.Add("Content-Type", "application/json")
 					request.SetBasicAuth("username", "password")
 
@@ -1501,14 +1783,14 @@ var _ = Describe("Service Broker API", func() {
 
 			It("calls the broker with the relevant instance ID", func() {
 				instanceID := "instanceID"
-				makeLastOperationRequest(instanceID, "")
+				makeLastOperationRequest(instanceID, "", "2.14")
 				Expect(fakeServiceBroker.LastOperationInstanceID).To(Equal(instanceID))
 			})
 
 			It("calls the broker with the URL decoded operation data", func() {
 				instanceID := "an-instance"
 				operationData := `{"foo":"bar"}`
-				makeLastOperationRequest(instanceID, operationData)
+				makeLastOperationRequest(instanceID, operationData, "2.14")
 				Expect(fakeServiceBroker.LastOperationData).To(Equal(operationData))
 			})
 
@@ -1517,7 +1799,7 @@ var _ = Describe("Service Broker API", func() {
 				fakeServiceBroker.LastOperationDescription = "some description"
 
 				instanceID := "instanceID"
-				response := makeLastOperationRequest(instanceID, "")
+				response := makeLastOperationRequest(instanceID, "", "2.14")
 
 				logs := brokerLogger.Logs()
 
@@ -1535,7 +1817,7 @@ var _ = Describe("Service Broker API", func() {
 			It("should return a 410 and log in case the instance id is not found", func() {
 				fakeServiceBroker.LastOperationError = brokerapi.ErrInstanceDoesNotExist
 				instanceID := "non-existing"
-				response := makeLastOperationRequest(instanceID, "")
+				response := makeLastOperationRequest(instanceID, "", "2.14")
 
 				Expect(lastLogLine().Message).To(ContainSubstring(".lastOperation.instance-missing"))
 				Expect(lastLogLine().Data["error"]).To(ContainSubstring("instance does not exist"))
@@ -1550,14 +1832,14 @@ var _ = Describe("Service Broker API", func() {
 				})
 
 				It("returns a generic 500 error response", func() {
-					response := makeLastOperationRequest("instanceID", "")
+					response := makeLastOperationRequest("instanceID", "", "2.14")
 
 					Expect(response.StatusCode).To(Equal(500))
 					Expect(response.Body).To(MatchJSON(`{"description": "unknown error"}`))
 				})
 
 				It("logs a detailed error message", func() {
-					makeLastOperationRequest("instanceID", "")
+					makeLastOperationRequest("instanceID", "", "2.14")
 
 					Expect(lastLogLine().Message).To(ContainSubstring(".lastOperation.unknown-error"))
 					Expect(lastLogLine().Data["error"]).To(ContainSubstring("unknown error"))
@@ -1574,19 +1856,35 @@ var _ = Describe("Service Broker API", func() {
 				})
 
 				It("returns status teapot", func() {
-					response := makeLastOperationRequest("instanceID", "")
+					response := makeLastOperationRequest("instanceID", "", "2.14")
 					Expect(response.StatusCode).To(Equal(http.StatusTeapot))
 				})
 
 				It("returns json with a description field and a useful error message", func() {
-					response := makeLastOperationRequest("instanceID", "")
+					response := makeLastOperationRequest("instanceID", "", "2.14")
 					Expect(response.Body).To(MatchJSON(`{"description":"I failed in unique and interesting ways"}`))
 				})
 
 				It("logs an appropriate error", func() {
-					makeLastOperationRequest("instanceID", "")
+					makeLastOperationRequest("instanceID", "", "2.14")
 					Expect(lastLogLine().Message).To(ContainSubstring(".lastOperation.interesting-failure"))
 					Expect(lastLogLine().Data["error"]).To(ContainSubstring("I failed in unique and interesting ways"))
+				})
+			})
+
+			Context("the request is malformed", func() {
+				It("missing header X-Broker-API-Version", func() {
+					response := makeLastOperationRequest("instance-id", "", "")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".lastOperation.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header not set"))
+				})
+
+				It("has wrong version of API", func() {
+					response := makeLastOperationRequest("instance-id", "", "1.2")
+					Expect(response.StatusCode).To(Equal(412))
+					Expect(lastLogLine().Message).To(ContainSubstring(".lastOperation.broker-api-version-invalid"))
+					Expect(lastLogLine().Data["error"]).To(ContainSubstring("X-Broker-API-Version Header must be 2.x"))
 				})
 			})
 		})

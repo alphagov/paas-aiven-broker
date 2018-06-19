@@ -7,9 +7,9 @@ import (
 	"net/url"
 
 	"code.cloudfoundry.org/lager"
-	. "github.com/henrytk/universal-service-broker/broker"
-	broker_tester "github.com/henrytk/universal-service-broker/broker/testing"
-	"github.com/henrytk/universal-service-broker/provider/fakes"
+	. "github.com/alphagov/paas-aiven-broker/broker"
+	broker_tester "github.com/alphagov/paas-aiven-broker/broker/testing"
+	"github.com/alphagov/paas-aiven-broker/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
 
 	. "github.com/onsi/ginkgo"
@@ -154,15 +154,13 @@ var _ = Describe("Broker API", func() {
 		It("accepts a deprovision request", func() {
 			fakeProvider.DeprovisionReturns("operationData", nil)
 			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
+			Expect(res.Code).To(Equal(http.StatusOK))
 
 			deprovisionResponse := brokerapi.DeprovisionResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := brokerapi.DeprovisionResponse{
-				OperationData: "operationData",
-			}
+			expectedResponse := brokerapi.DeprovisionResponse{}
 			Expect(deprovisionResponse).To(Equal(expectedResponse))
 		})
 
@@ -170,11 +168,6 @@ var _ = Describe("Broker API", func() {
 			fakeProvider.DeprovisionReturns("", errors.New("some deprovisioning error"))
 			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
-		})
-
-		It("rejects requests for synchronous deprovisioning", func() {
-			res := brokerTester.Deprovision(instanceID, service1, plan1, false)
-			Expect(res.Code).To(Equal(http.StatusUnprocessableEntity))
 		})
 	})
 

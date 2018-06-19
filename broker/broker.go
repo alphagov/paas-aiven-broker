@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/henrytk/universal-service-broker/provider"
+	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
 )
 
@@ -23,8 +23,8 @@ func New(config Config, serviceProvider provider.ServiceProvider, logger lager.L
 	}
 }
 
-func (b *Broker) Services(ctx context.Context) []brokerapi.Service {
-	return b.config.Catalog.Catalog.Services
+func (b *Broker) Services(ctx context.Context) ([]brokerapi.Service, error) {
+	return b.config.Catalog.Catalog.Services, nil
 }
 
 func (b *Broker) Provision(
@@ -129,7 +129,7 @@ func (b *Broker) Deprovision(
 	})
 
 	return brokerapi.DeprovisionServiceSpec{
-		IsAsync:       asyncAllowed,
+		IsAsync:       false,
 		OperationData: operationData,
 	}, nil
 }
