@@ -162,9 +162,6 @@ var _ = Describe("Broker", func() {
 		})
 		Expect(res.Code).To(Equal(http.StatusOK))
 
-		By("ensuring credentials no longer allow reading data")
-		pollForUserDeletion(elasticsearchClient, parsedResponse)
-
 		By("Deprovisioning")
 		res = brokerTester.Deprovision(instanceID, "uuid-1", "uuid-2", ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusOK))
@@ -245,20 +242,4 @@ func pollForBackupCompletion(instanceID string) {
 		5*time.Minute,
 		30*time.Second,
 	).Should(BeTrue())
-}
-
-func pollForUserDeletion(elasticsearchClient *elastic.Client, parsedResponse BindingResponse) {
-	Eventually(
-		func() int {
-			getURI := parsedResponse.Credentials.Uri + "/twitter/tweet/1"
-			res, err := elasticsearchClient.Get(getURI)
-			if err != nil {
-				return 0
-			}
-			defer res.Body.Close()
-			return res.StatusCode
-		},
-		5*time.Minute,
-		30*time.Second,
-	).Should(Equal(http.StatusUnauthorized))
 }
