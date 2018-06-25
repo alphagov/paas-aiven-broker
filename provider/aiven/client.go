@@ -120,6 +120,7 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven", res.StatusCode)
@@ -169,6 +170,7 @@ func (a *HttpClient) DeleteService(params *DeleteServiceInput) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
@@ -188,6 +190,7 @@ func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, 
 	if err != nil {
 		return "", err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Error creating service user: %d status code returned from Aiven", res.StatusCode)
@@ -210,6 +213,7 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 	if err != nil {
 		return "", err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven", res.StatusCode)
@@ -224,6 +228,7 @@ func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, e
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("Error getting service: %d status code returned from Aiven", res.StatusCode)
@@ -247,6 +252,7 @@ func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Error updating service: %d status code returned from Aiven", res.StatusCode)
 	}

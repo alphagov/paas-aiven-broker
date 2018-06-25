@@ -126,12 +126,14 @@ var _ = Describe("Broker", func() {
 		request.Header.Set("Content-Type", "application/json")
 		resp, err := elasticsearchClient.Do(request)
 		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
 		Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
 		By("ensuring credentials allow reading data")
 		getURI := parsedResponse.Credentials.Uri + "/twitter/tweet/1"
 		get, err := elasticsearchClient.Get(getURI)
 		Expect(err).NotTo(HaveOccurred())
+		defer get.Body.Close()
 		Expect(get.StatusCode).To(Equal(http.StatusOK))
 		body, err := ioutil.ReadAll(get.Body)
 		Expect(err).NotTo(HaveOccurred())
@@ -227,6 +229,7 @@ func pollForBackupCompletion(instanceID string) {
 			if err != nil {
 				return false
 			}
+			defer res.Body.Close()
 
 			service := &getServiceResponse{}
 			err = json.NewDecoder(res.Body).Decode(&service)
@@ -252,6 +255,7 @@ func pollForUserDeletion(elasticsearchClient *elastic.Client, parsedResponse Bin
 			if err != nil {
 				return 0
 			}
+			defer res.Body.Close()
 			return res.StatusCode
 		},
 		5*time.Minute,
