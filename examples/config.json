@@ -9,6 +9,7 @@
                         "name": "elasticsearch",
                         "description": "Elasticsearch instances provisioned via Aiven",
                         "bindable": true,
+                        "plan_updateable": true,
                         "requires": [],
                         "metadata": {},
                         "plans": [{

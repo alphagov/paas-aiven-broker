@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"hash/crc32"
+	"net/url"
+	"time"
 
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/pivotal-cf/brokerapi"
@@ -57,25 +59,89 @@ func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData Deprov
 	return "", nil
 }
 
+type Credentials struct {
+	Uri       string                 `json:"service_uri"`
+	UriParams aiven.ServiceUriParams `json:"service_uri_params"`
+}
+
 func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
-	return brokerapi.Binding{}, fmt.Errorf("not implemented")
+	user := bindData.BindingID
+	password, err := ap.Client.CreateServiceUser(&aiven.CreateServiceUserInput{
+		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
+		Username:    user,
+	})
+	if err != nil {
+		return brokerapi.Binding{}, err
+	}
+
+	host, port, err := ap.Client.GetServiceConnectionDetails(&aiven.GetServiceInput{
+		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
+	})
+	if err != nil {
+		return brokerapi.Binding{}, err
+	}
+
+	credentials := Credentials{
+		Uri: buildUri(user, password, host, port),
+		UriParams: aiven.ServiceUriParams{
+			Host:     host,
+			Port:     port,
+			User:     user,
+			Password: password,
+		},
+	}
+
+	return brokerapi.Binding{
+		Credentials: credentials,
+	}, nil
+}
+
+func buildUri(user, password, host, port string) string {
+	uri := &url.URL{
+		Scheme: "https",
+		User:   url.UserPassword(user, password),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+	}
+	return uri.String()
 }
 
 func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err error) {
-	return fmt.Errorf("not implemented")
+	_, err = ap.Client.DeleteServiceUser(&aiven.DeleteServiceUserInput{
+		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, unbindData.InstanceID),
+		Username:    unbindData.BindingID,
+	})
+	return err
 }
 
 func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (operationData string, err error) {
-	return "", fmt.Errorf("not implemented")
+	plan, err := ap.Config.FindPlan(updateData.Details.ServiceID, updateData.Details.PlanID)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
+		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, updateData.InstanceID),
+		Plan:        plan.AivenPlan,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
 }
 
 func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData LastOperationData) (state brokerapi.LastOperationState, description string, err error) {
-	status, err := ap.Client.GetServiceStatus(&aiven.GetServiceStatusInput{
+	status, updateTime, err := ap.Client.GetServiceStatus(&aiven.GetServiceInput{
 		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, lastOperationData.InstanceID),
 	})
 	if err != nil {
 		return "", "", err
 	}
+
+	if updateTime.After(time.Now().Add(-1 * 60 * time.Second)) {
+		return brokerapi.InProgress, "Preparing to apply update", nil
+	}
+
 	lastOperationState, description := ProviderStatesMapping(status)
 	return lastOperationState, description, nil
 }

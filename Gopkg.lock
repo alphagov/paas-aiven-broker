@@ -27,20 +27,57 @@
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
-  packages = [".","config","internal/codelocation","internal/containernode","internal/failer","internal/leafnodes","internal/remote","internal/spec","internal/spec_iterator","internal/specrunner","internal/suite","internal/testingtproxy","internal/writer","reporters","reporters/stenographer","reporters/stenographer/support/go-colorable","reporters/stenographer/support/go-isatty","types"]
+  packages = [
+    ".",
+    "config",
+    "internal/codelocation",
+    "internal/containernode",
+    "internal/failer",
+    "internal/leafnodes",
+    "internal/remote",
+    "internal/spec",
+    "internal/spec_iterator",
+    "internal/specrunner",
+    "internal/suite",
+    "internal/testingtproxy",
+    "internal/writer",
+    "reporters",
+    "reporters/stenographer",
+    "reporters/stenographer/support/go-colorable",
+    "reporters/stenographer/support/go-isatty",
+    "types"
+  ]
   revision = "fa5fabab2a1bfbd924faf4c067d07ae414e2aedf"
   version = "v1.5.0"
 
 [[projects]]
   name = "github.com/onsi/gomega"
-  packages = [".","format","gbytes","ghttp","internal/assertion","internal/asyncassertion","internal/oraclematcher","internal/testingtsupport","matchers","matchers/support/goraph/bipartitegraph","matchers/support/goraph/edge","matchers/support/goraph/node","matchers/support/goraph/util","types"]
+  packages = [
+    ".",
+    "format",
+    "gbytes",
+    "ghttp",
+    "internal/assertion",
+    "internal/asyncassertion",
+    "internal/oraclematcher",
+    "internal/testingtsupport",
+    "matchers",
+    "matchers/support/goraph/bipartitegraph",
+    "matchers/support/goraph/edge",
+    "matchers/support/goraph/node",
+    "matchers/support/goraph/util",
+    "types"
+  ]
   revision = "62bff4df71bdbc266561a0caee19f0594b17c240"
   version = "v1.4.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/pivotal-cf/brokerapi"
-  packages = [".","auth"]
+  packages = [
+    ".",
+    "auth"
+  ]
   revision = "d1fcddd951a6776bc01659143dda6aca057e98b7"
 
 [[projects]]
@@ -52,7 +89,11 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["html","html/atom","html/charset"]
+  packages = [
+    "html",
+    "html/atom",
+    "html/charset"
+  ]
   revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
 
 [[projects]]
@@ -63,9 +104,33 @@
 
 [[projects]]
   name = "golang.org/x/text"
-  packages = ["encoding","encoding/charmap","encoding/htmlindex","encoding/internal","encoding/internal/identifier","encoding/japanese","encoding/korean","encoding/simplifiedchinese","encoding/traditionalchinese","encoding/unicode","internal/gen","internal/tag","internal/utf8internal","language","runes","transform","unicode/cldr"]
+  packages = [
+    "encoding",
+    "encoding/charmap",
+    "encoding/htmlindex",
+    "encoding/internal",
+    "encoding/internal/identifier",
+    "encoding/japanese",
+    "encoding/korean",
+    "encoding/simplifiedchinese",
+    "encoding/traditionalchinese",
+    "encoding/unicode",
+    "internal/gen",
+    "internal/tag",
+    "internal/utf8internal",
+    "language",
+    "runes",
+    "transform",
+    "unicode/cldr"
+  ]
   revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
   version = "v0.3.0"
+
+[[projects]]
+  branch = "v1"
+  name = "gopkg.in/jarcoal/httpmock.v1"
+  packages = ["."]
+  revision = "16f9a43967d613f0adc2000f0094a17b9f6c4c20"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -76,6 +141,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cbe0f3b8f7550f01ac798c627f9a407ba92d9d24823d0142e643535bbaca919b"
+  inputs-digest = "fe90a31bb9c21b3b433cac05c0735c38161342a0f328c92a8d98502a3119998d"
   solver-name = "gps-cdcl"
   solver-version = 1
