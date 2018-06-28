@@ -142,7 +142,7 @@ func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData La
 		return brokerapi.InProgress, "Preparing to apply update", nil
 	}
 
-	lastOperationState, description := ProviderStatesMapping(status)
+	lastOperationState, description := providerStatesMapping(status)
 	return lastOperationState, description, nil
 }
 
@@ -151,7 +151,7 @@ func BuildServiceName(prefix, guid string) string {
 	return fmt.Sprintf("%s%x", prefix, checksum)
 }
 
-func ProviderStatesMapping(status aiven.ServiceStatus) (brokerapi.LastOperationState, string) {
+func providerStatesMapping(status aiven.ServiceStatus) (brokerapi.LastOperationState, string) {
 	switch status {
 	case aiven.Running:
 		return brokerapi.Succeeded, "Last operation succeeded"
