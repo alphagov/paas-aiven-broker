@@ -11,6 +11,14 @@ import (
 
 var _ = Describe("Provider internals", func() {
 
+	DescribeTable("buildServiceName",
+		func(prefix, instanceId, expected string) {
+			Expect(buildServiceName(prefix, instanceId)).To(Equal(expected))
+		},
+		Entry("combines prefix and instanceId", "env", "09e1993e-62e2-4040-adf2-4d3ec741efe6", "env-09e1993e-62e2-4040-adf2-4d3ec741efe6"),
+		Entry("downcases everything", "Env", "09E1993E-62E2-4040-ADF2-4D3EC741EFE6", "env-09e1993e-62e2-4040-adf2-4d3ec741efe6"),
+	)
+
 	DescribeTable("providerStatesMapping",
 		func(inputState aiven.ServiceStatus, expectedState brokerapi.LastOperationState, expectedDescription string) {
 			state, description := providerStatesMapping(inputState)
