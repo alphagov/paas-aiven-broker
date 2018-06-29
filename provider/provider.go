@@ -3,8 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
-	"hash/crc32"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
@@ -39,7 +39,7 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 	createServiceInput := &aiven.CreateServiceInput{
 		Cloud:       ap.Config.Cloud,
 		Plan:        plan.AivenPlan,
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, provisionData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, provisionData.InstanceID),
 		ServiceType: SERVICE_TYPE,
 		UserConfig: aiven.UserConfig{
 			ElasticsearchVersion: plan.ElasticsearchVersion,
@@ -51,7 +51,7 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 
 func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData DeprovisionData) (operationData string, err error) {
 	_, err = ap.Client.DeleteService(&aiven.DeleteServiceInput{
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, deprovisionData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, deprovisionData.InstanceID),
 	})
 	if err != nil {
 		return "", err
@@ -67,7 +67,7 @@ type Credentials struct {
 func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
 	user := bindData.BindingID
 	password, err := ap.Client.CreateServiceUser(&aiven.CreateServiceUserInput{
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
 		Username:    user,
 	})
 	if err != nil {
@@ -75,7 +75,7 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	}
 
 	host, port, err := ap.Client.GetServiceConnectionDetails(&aiven.GetServiceInput{
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
 	})
 	if err != nil {
 		return brokerapi.Binding{}, err
@@ -107,7 +107,7 @@ func buildUri(user, password, host, port string) string {
 
 func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err error) {
 	_, err = ap.Client.DeleteServiceUser(&aiven.DeleteServiceUserInput{
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, unbindData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, unbindData.InstanceID),
 		Username:    unbindData.BindingID,
 	})
 	return err
@@ -120,7 +120,7 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 	}
 
 	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, updateData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, updateData.InstanceID),
 		Plan:        plan.AivenPlan,
 	})
 	if err != nil {
@@ -132,7 +132,7 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 
 func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData LastOperationData) (state brokerapi.LastOperationState, description string, err error) {
 	status, updateTime, err := ap.Client.GetServiceStatus(&aiven.GetServiceInput{
-		ServiceName: BuildServiceName(ap.Config.ServiceNamePrefix, lastOperationData.InstanceID),
+		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, lastOperationData.InstanceID),
 	})
 	if err != nil {
 		return "", "", err
@@ -142,16 +142,15 @@ func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData La
 		return brokerapi.InProgress, "Preparing to apply update", nil
 	}
 
-	lastOperationState, description := ProviderStatesMapping(status)
+	lastOperationState, description := providerStatesMapping(status)
 	return lastOperationState, description, nil
 }
 
-func BuildServiceName(prefix, guid string) string {
-	checksum := crc32.ChecksumIEEE([]byte(guid))
-	return fmt.Sprintf("%s%x", prefix, checksum)
+func buildServiceName(prefix, guid string) string {
+	return strings.ToLower(prefix + "-" + guid)
 }
 
-func ProviderStatesMapping(status aiven.ServiceStatus) (brokerapi.LastOperationState, string) {
+func providerStatesMapping(status aiven.ServiceStatus) (brokerapi.LastOperationState, string) {
 	switch status {
 	case aiven.Running:
 		return brokerapi.Succeeded, "Last operation succeeded"

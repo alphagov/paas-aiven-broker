@@ -71,7 +71,7 @@ var _ = Describe("Provider", func() {
 			expectedParameters := &aiven.CreateServiceInput{
 				Cloud:       "aws-eu-west-1",
 				Plan:        "startup-1",
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				ServiceType: "elasticsearch",
 				UserConfig: aiven.UserConfig{
 					ElasticsearchVersion: "6",
@@ -101,7 +101,7 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.DeleteServiceCallCount()).To(Equal(1))
 
 			expectedParameters := &aiven.DeleteServiceInput{
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 			}
 			Expect(fakeAivenClient.DeleteServiceArgsForCall(0)).To(Equal(expectedParameters))
 		})
@@ -131,13 +131,13 @@ var _ = Describe("Provider", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			expectedCreateServiceUserParameters := &aiven.CreateServiceUserInput{
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Username:    bindData.BindingID,
 			}
 			Expect(fakeAivenClient.CreateServiceUserArgsForCall(0)).To(Equal(expectedCreateServiceUserParameters))
 
 			expectedGetServiceConnectionDetailsParameters := &aiven.GetServiceInput{
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 			}
 			Expect(fakeAivenClient.GetServiceConnectionDetailsArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
 
@@ -188,7 +188,7 @@ var _ = Describe("Provider", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			expectedDeleteServiceUserParameters := &aiven.DeleteServiceUserInput{
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Username:    unbindData.BindingID,
 			}
 
@@ -223,7 +223,7 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
 			expectedParameters := &aiven.UpdateServiceInput{
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Plan:        "startup-2",
 			}
 			Expect(fakeAivenClient.UpdateServiceArgsForCall(0)).To(Equal(expectedParameters))
@@ -250,7 +250,7 @@ var _ = Describe("Provider", func() {
 	Describe("LastOperation", func() {
 		It("should return succeeded when the service is running", func() {
 			expectedGetServiceStatusParameters := &aiven.GetServiceInput{
-				ServiceName: "env69bc39f8",
+				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 			}
 
 			lastOperationData := provider.LastOperationData{
@@ -276,7 +276,7 @@ var _ = Describe("Provider", func() {
 		Context("when the state is RUNNING, but the service has only just been updated", func() {
 			It("should report it 'in progress' for up to 60 seconds after the updated time", func() {
 				expectedGetServiceParameters := &aiven.GetServiceInput{
-					ServiceName: "env69bc39f8",
+					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				}
 
 				lastOperationData := provider.LastOperationData{
@@ -308,43 +308,6 @@ var _ = Describe("Provider", func() {
 			Expect(err).To(MatchError("some-error"))
 			Expect(actualLastOperationState).To(Equal(brokerapi.LastOperationState("")))
 			Expect(description).To(Equal(""))
-		})
-	})
-
-	Describe("ProviderStatesMapping", func() {
-		It("should return 'succeeded' when RUNNING", func() {
-			state, description := provider.ProviderStatesMapping(aiven.Running)
-
-			Expect(state).To(Equal(brokerapi.Succeeded))
-			Expect(description).To(Equal("Last operation succeeded"))
-		})
-
-		It("should return 'in progress' when REBUILDING", func() {
-			state, description := provider.ProviderStatesMapping(aiven.Rebuilding)
-
-			Expect(state).To(Equal(brokerapi.InProgress))
-			Expect(description).To(Equal("Rebuilding"))
-		})
-
-		It("should return 'in progress' when REBALANCING", func() {
-			state, description := provider.ProviderStatesMapping(aiven.Rebalancing)
-
-			Expect(state).To(Equal(brokerapi.InProgress))
-			Expect(description).To(Equal("Rebalancing"))
-		})
-
-		It("should return 'failed' when POWEROFF", func() {
-			state, description := provider.ProviderStatesMapping(aiven.PowerOff)
-
-			Expect(state).To(Equal(brokerapi.Failed))
-			Expect(description).To(Equal("Last operation failed: service is powered off"))
-		})
-
-		It("should return 'in progress' by default", func() {
-			state, description := provider.ProviderStatesMapping("foo")
-
-			Expect(state).To(Equal(brokerapi.InProgress))
-			Expect(description).To(Equal("Unknown state: foo"))
 		})
 	})
 })

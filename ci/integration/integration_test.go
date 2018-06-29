@@ -208,7 +208,7 @@ func pollForBackupCompletion(instanceID string) {
 				} `json:"service"`
 			}
 
-			serviceName := provider.BuildServiceName(os.Getenv("SERVICE_NAME_PREFIX"), instanceID)
+			serviceName := os.Getenv("SERVICE_NAME_PREFIX") + "-" + instanceID
 			req, err := http.NewRequest("GET", fmt.Sprintf(
 				"https://api.aiven.io/v1beta/project/%s/service/%s",
 				os.Getenv("AIVEN_PROJECT"),
