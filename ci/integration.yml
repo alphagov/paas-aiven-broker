@@ -20,6 +20,10 @@ run:
       export AIVEN_PROJECT
       SERVICE_NAME_PREFIX=test
       export SERVICE_NAME_PREFIX
+      AIVEN_USERNAME=foo
+      export AIVEN_USERNAME
+      AIVEN_PASSWORD=bar
+      export AIVEN_PASSWORD
 
       mkdir -p "${GOPATH}/src/github.com/alphagov/paas-aiven-broker"
       rsync -az repo/ "${GOPATH}/src/github.com/alphagov/paas-aiven-broker/"

@@ -48,8 +48,6 @@ var _ = Describe("Broker", func() {
 		By("initializing")
 
 		configJSON := `{
-			"basic_auth_username": "foo",
-			"basic_auth_password": "bar",
 			"cloud": "aws-eu-west-1",
 			"catalog": {
 				"services": [{

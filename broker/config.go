@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"reflect"
 	"strings"
 
@@ -33,6 +34,14 @@ func NewConfig(source io.Reader) (Config, error) {
 	api := API{}
 	if err = json.Unmarshal(bytes, &api); err != nil {
 		return config, err
+	}
+	basicAuthUsername, ok := os.LookupEnv("AIVEN_USERNAME")
+	if ok {
+		api.BasicAuthUsername = basicAuthUsername
+	}
+	basicAuthPassword, ok := os.LookupEnv("AIVEN_PASSWORD")
+	if ok {
+		api.BasicAuthPassword = basicAuthPassword
 	}
 	if api.Port == "" {
 		api.Port = "3000"
