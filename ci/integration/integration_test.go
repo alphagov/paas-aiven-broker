@@ -48,7 +48,6 @@ var _ = Describe("Broker", func() {
 		By("initializing")
 
 		configJSON := `{
-			"cloud": "aws-eu-west-1",
 			"catalog": {
 				"services": [{
 					"id": "uuid-1",

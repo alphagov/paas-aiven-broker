@@ -24,6 +24,8 @@ run:
       export AIVEN_USERNAME
       AIVEN_PASSWORD=bar
       export AIVEN_PASSWORD
+      AIVEN_CLOUD=aws-eu-west-1
+      export AIVEN_CLOUD
 
       mkdir -p "${GOPATH}/src/github.com/alphagov/paas-aiven-broker"
       rsync -az repo/ "${GOPATH}/src/github.com/alphagov/paas-aiven-broker/"

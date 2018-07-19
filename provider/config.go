@@ -42,6 +42,10 @@ func DecodeConfig(b []byte) (*Config, error) {
 	if err != nil {
 		return config, err
 	}
+	aivenCloud, ok := os.LookupEnv("AIVEN_CLOUD")
+	if ok {
+		config.Cloud = aivenCloud
+	}
 	if config.Cloud == "" {
 		return config, errors.New("Config error: must provide cloud configuration. For example, 'aws-eu-west-1'")
 	}
