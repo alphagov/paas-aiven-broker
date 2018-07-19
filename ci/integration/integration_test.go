@@ -29,7 +29,7 @@ const (
 )
 
 type BindingResponse struct {
-	Credentials provider.Credentials `json:"credentials"`
+	Credentials map[string]interface{} `json:"credentials"`
 }
 
 var _ = Describe("Broker", func() {
@@ -48,9 +48,6 @@ var _ = Describe("Broker", func() {
 		By("initializing")
 
 		configJSON := `{
-			"basic_auth_username": "foo",
-			"basic_auth_password": "bar",
-			"cloud": "aws-eu-west-1",
 			"catalog": {
 				"services": [{
 					"id": "uuid-1",
@@ -109,18 +106,23 @@ var _ = Describe("Broker", func() {
 		Expect(res.Code).To(Equal(http.StatusCreated))
 
 		parsedResponse := BindingResponse{}
-
 		err = json.NewDecoder(res.Body).Decode(&parsedResponse)
 		Expect(err).ToNot(HaveOccurred())
+		// Ensure returned credentials follow guidlines in https://docs.cloudfoundry.org/services/binding-credentials.html
+		var str string
+		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("uri", BeAssignableToTypeOf(str)))
+		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("hostname", BeAssignableToTypeOf(str)))
+		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("port", BeAssignableToTypeOf(str)))
+		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("username", BeAssignableToTypeOf(str)))
+		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("password", BeAssignableToTypeOf(str)))
 
-		httpClient := http.Client{}
-		elasticsearchClient, _ := elastic.New(parsedResponse.Credentials.Uri, &httpClient)
+		elasticsearchClient, _ := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
 
 		By("Working around Aiven's slow DNS creation")
 		pollForAvailability(elasticsearchClient)
 
 		By("ensuring credentials allow writing data")
-		putURI := parsedResponse.Credentials.Uri + "/twitter/tweet/1?op_type=create"
+		putURI := elasticsearchClient.URI + "/twitter/tweet/1?op_type=create"
 		request, err := http.NewRequest("PUT", putURI, strings.NewReader(putData))
 		Expect(err).NotTo(HaveOccurred())
 		request.Header.Set("Content-Type", "application/json")
@@ -130,7 +132,7 @@ var _ = Describe("Broker", func() {
 		Expect(resp.StatusCode).To(Equal(http.StatusCreated))
 
 		By("ensuring credentials allow reading data")
-		getURI := parsedResponse.Credentials.Uri + "/twitter/tweet/1"
+		getURI := elasticsearchClient.URI + "/twitter/tweet/1"
 		get, err := elasticsearchClient.Get(getURI)
 		Expect(err).NotTo(HaveOccurred())
 		defer get.Body.Close()

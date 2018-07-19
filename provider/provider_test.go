@@ -143,13 +143,11 @@ var _ = Describe("Provider", func() {
 
 			expectedBinding := brokerapi.Binding{
 				Credentials: provider.Credentials{
-					Uri: "https://D26EA3FB-AA78-451C-9ED0-233935ED388F:superdupersecret@example.com:23362",
-					UriParams: aiven.ServiceUriParams{
-						Host:     "example.com",
-						Port:     "23362",
-						User:     "D26EA3FB-AA78-451C-9ED0-233935ED388F",
-						Password: "superdupersecret",
-					},
+					URI:      "https://D26EA3FB-AA78-451C-9ED0-233935ED388F:superdupersecret@example.com:23362",
+					Hostname: "example.com",
+					Port:     "23362",
+					Username: "D26EA3FB-AA78-451C-9ED0-233935ED388F",
+					Password: "superdupersecret",
 				},
 			}
 			Expect(actualBinding).To(Equal(expectedBinding))

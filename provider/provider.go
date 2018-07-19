@@ -60,8 +60,11 @@ func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData Deprov
 }
 
 type Credentials struct {
-	Uri       string                 `json:"service_uri"`
-	UriParams aiven.ServiceUriParams `json:"service_uri_params"`
+	URI      string `json:"uri"`
+	Hostname string `json:"hostname"`
+	Port     string `json:"port"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
@@ -82,13 +85,11 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	}
 
 	credentials := Credentials{
-		Uri: buildUri(user, password, host, port),
-		UriParams: aiven.ServiceUriParams{
-			Host:     host,
-			Port:     port,
-			User:     user,
-			Password: password,
-		},
+		URI:      buildURI(user, password, host, port),
+		Hostname: host,
+		Port:     port,
+		Username: user,
+		Password: password,
 	}
 
 	return brokerapi.Binding{
@@ -96,7 +97,7 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	}, nil
 }
 
-func buildUri(user, password, host, port string) string {
+func buildURI(user, password, host, port string) string {
 	uri := &url.URL{
 		Scheme: "https",
 		User:   url.UserPassword(user, password),
