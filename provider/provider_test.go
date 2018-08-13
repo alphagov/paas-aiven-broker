@@ -3,6 +3,7 @@ package provider_test
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/alphagov/paas-aiven-broker/provider"
@@ -58,26 +59,49 @@ var _ = Describe("Provider", func() {
 	})
 
 	Describe("Provision", func() {
-		It("passes the correct parameters to the Aiven client", func() {
+		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 				Service:    brokerapi.Service{ID: "uuid-1"},
 				Plan:       brokerapi.ServicePlan{ID: "uuid-2"},
 			}
-			_, _, err := aivenProvider.Provision(context.Background(), provisionData)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
+			It("includes ip whitelist", func() {
+				os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
+				_, _, err := aivenProvider.Provision(context.Background(), provisionData)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
-			expectedParameters := &aiven.CreateServiceInput{
-				Cloud:       "aws-eu-west-1",
-				Plan:        "startup-1",
-				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-				ServiceType: "elasticsearch",
-				UserConfig: aiven.UserConfig{
-					ElasticsearchVersion: "6",
-				},
-			}
-			Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
+				expectedParameters := &aiven.CreateServiceInput{
+					Cloud:       "aws-eu-west-1",
+					Plan:        "startup-1",
+					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
+					ServiceType: "elasticsearch",
+					UserConfig: aiven.UserConfig{
+						ElasticsearchVersion: "6",
+						IPFilter:             []string{"1.2.3.4", "5.6.7.8"},
+					},
+				}
+				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
+				os.Unsetenv("IP_WHITELIST")
+			})
+			It("excludes ip whitelist when not set", func() {
+				os.Unsetenv("IP_WHITELIST")
+				_, _, err := aivenProvider.Provision(context.Background(), provisionData)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
+
+				expectedParameters := &aiven.CreateServiceInput{
+					Cloud:       "aws-eu-west-1",
+					Plan:        "startup-1",
+					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
+					ServiceType: "elasticsearch",
+					UserConfig: aiven.UserConfig{
+						ElasticsearchVersion: "6",
+						IPFilter:             []string{},
+					},
+				}
+				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
+			})
 		})
 
 		It("errors if the client errors", func() {
@@ -307,5 +331,41 @@ var _ = Describe("Provider", func() {
 			Expect(actualLastOperationState).To(Equal(brokerapi.LastOperationState("")))
 			Expect(description).To(Equal(""))
 		})
+	})
+
+	Describe("The ParseIPWhitelist function", func() {
+		It("parses an empty string as an empty list", func() {
+			Expect(provider.ParseIPWhitelist("")).
+				To(BeEmpty())
+		})
+
+		It("parses a single IP", func() {
+			Expect(provider.ParseIPWhitelist("127.0.0.1")).
+				To(Equal([]string{"127.0.0.1"}))
+		})
+
+		It("parses multiple IPs", func() {
+			Expect(provider.ParseIPWhitelist("127.0.0.1,99.99.99.99")).
+				To(Equal([]string{"127.0.0.1", "99.99.99.99"}))
+		})
+
+		It("returns an error for IPs containing the wrong number of octets", func() {
+			var err error
+			By("not permitting too many octets")
+			_, err = provider.ParseIPWhitelist("127.0.0.0.1")
+			Expect(err).To(HaveOccurred())
+			By("not permitting too few octets")
+			_, err = provider.ParseIPWhitelist("127.0.1")
+			Expect(err).To(HaveOccurred())
+			By("not permitting too few octets even when valid IPs are present")
+			_, err = provider.ParseIPWhitelist("8.8.8.8,127.0.1")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns an error for garbage IPs", func() {
+			_, err := provider.ParseIPWhitelist("ojnratuh53ggijntboijngk3,0ij90490ti9jo43p;';;1;'")
+			Expect(err).To(HaveOccurred())
+		})
+
 	})
 })

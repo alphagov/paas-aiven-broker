@@ -47,7 +47,8 @@ type CreateServiceInput struct {
 }
 
 type UserConfig struct {
-	ElasticsearchVersion string `json:"elasticsearch_version"`
+	ElasticsearchVersion string   `json:"elasticsearch_version"`
+	IPFilter             []string `json:"ip_filter,omitempty"`
 }
 
 type DeleteServiceInput struct {

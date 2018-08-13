@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -36,6 +37,10 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 	if err != nil {
 		return "", "", err
 	}
+	ipFilter, err := ParseIPWhitelist(os.Getenv("IP_WHITELIST"))
+	if err != nil {
+		return "", "", err
+	}
 	createServiceInput := &aiven.CreateServiceInput{
 		Cloud:       ap.Config.Cloud,
 		Plan:        plan.AivenPlan,
@@ -43,6 +48,7 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 		ServiceType: SERVICE_TYPE,
 		UserConfig: aiven.UserConfig{
 			ElasticsearchVersion: plan.ElasticsearchVersion,
+			IPFilter:             ipFilter,
 		},
 	}
 	_, err = ap.Client.CreateService(createServiceInput)
@@ -145,6 +151,20 @@ func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData La
 
 	lastOperationState, description := providerStatesMapping(status)
 	return lastOperationState, description, nil
+}
+
+func ParseIPWhitelist(ips string) ([]string, error) {
+	if ips == "" {
+		return []string{}, nil
+	}
+	outIPs := []string{}
+	for _, ip := range strings.Split(ips, ",") {
+		if len(strings.Split(ip, ".")) != 4 {
+			return []string{}, fmt.Errorf("malformed whitelist IP: %v", ip)
+		}
+		outIPs = append(outIPs, ip)
+	}
+	return outIPs, nil
 }
 
 func buildServiceName(prefix, guid string) string {

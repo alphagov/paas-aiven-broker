@@ -35,6 +35,10 @@ var _ = Describe("Client", func() {
 				Plan:        "plan",
 				ServiceName: "name",
 				ServiceType: "type",
+				UserConfig: aiven.UserConfig{
+					ElasticsearchVersion: "6",
+					IPFilter:             []string{"1.2.3.4"},
+				},
 			}
 			expectedBody, _ := json.Marshal(createServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
