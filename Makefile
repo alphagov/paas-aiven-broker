@@ -2,11 +2,12 @@
 
 test: unit integration
 
+integration: export EGRESS_IP=$(shell curl --silent icanhazip.com)
 integration:
-	ginkgo ci/integration
+	ginkgo -v ci/integration
 
+unit: export SERVICE_NAME_PREFIX=test
+unit: export AIVEN_API_TOKEN=token
+unit: export AIVEN_PROJECT=project
 unit:
-	$(eval export SERVICE_NAME_PREFIX=test)
-	$(eval export AIVEN_API_TOKEN=token)
-	$(eval export AIVEN_PROJECT=project)
 	ginkgo $(COMMAND) -r --skipPackage=ci $(PACKAGE)
