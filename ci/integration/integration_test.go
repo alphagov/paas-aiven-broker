@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -46,6 +47,12 @@ var _ = Describe("Broker", func() {
 
 	It("should manage the lifecycle of an Elasticsearch cluster", func() {
 		By("initializing")
+
+		egressIP := os.Getenv("EGRESS_IP")
+		Expect(egressIP).ToNot(BeEmpty())
+
+		os.Setenv("IP_WHITELIST", egressIP)
+		defer os.Unsetenv("IP_WHITELIST")
 
 		configJSON := `{
 			"catalog": {
@@ -172,6 +179,96 @@ var _ = Describe("Broker", func() {
 		err = json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
 		Expect(err).NotTo(HaveOccurred())
 	})
+
+	// 99% of this IP whitelisting test is stolen from the lifecycle mgmt test, below.
+	// Refactor opportunity!
+	It("should enforce IP whitelisting if configured to do so", func() {
+		By("initializing")
+
+		configJSON := `{
+			"catalog": {
+				"services": [{
+					"id": "uuid-1",
+					"plan_updateable": true,
+					"plans": [{
+						"id": "uuid-2",
+						"name": "basic",
+						"aiven_plan": "startup-4",
+						"elasticsearch_version": "6"
+					}]
+				}]
+			}
+		}`
+
+		brokerConfig, err := broker.NewConfig(bytes.NewBuffer([]byte(configJSON)))
+		Expect(err).ToNot(HaveOccurred())
+
+		aivenProvider, err := provider.New(brokerConfig.Provider)
+		Expect(err).ToNot(HaveOccurred())
+
+		logger := lager.NewLogger("AivenServiceBroker")
+		logger.RegisterSink(lager.NewWriterSink(os.Stdout, brokerConfig.API.LagerLogLevel))
+
+		os.Setenv("IP_WHITELIST", "8.8.8.8")
+		defer os.Unsetenv("IP_WHITELIST")
+
+		aivenBroker := broker.New(brokerConfig, aivenProvider, logger)
+
+		brokerServer := broker.NewAPI(aivenBroker, logger, brokerConfig)
+
+		brokerTester := brokertesting.New(brokerapi.BrokerCredentials{
+			Username: "foo",
+			Password: "bar",
+		}, brokerServer)
+
+		By("Provisioning")
+
+		res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
+			ServiceID: "uuid-1",
+			PlanID:    "uuid-2",
+		}, ASYNC_ALLOWED)
+		Expect(res.Code).To(Equal(http.StatusAccepted))
+
+		defer func() {
+			_ = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
+				ServiceID: "uuid-1",
+				PlanID:    "uuid-2",
+			})
+			_ = brokerTester.Deprovision(instanceID, "uuid-1", "uuid-2", ASYNC_ALLOWED)
+		}()
+
+		By("Polling for success")
+		pollForCompletion(brokerTester, instanceID, "", brokerapi.LastOperationResponse{
+			State:       brokerapi.Succeeded,
+			Description: "Last operation succeeded",
+		})
+
+		By("Binding")
+		res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
+			ServiceID: "uuid-1",
+			PlanID:    "uuid-2",
+		})
+		Expect(res.Code).To(Equal(http.StatusCreated))
+
+		parsedResponse := BindingResponse{}
+		err = json.NewDecoder(res.Body).Decode(&parsedResponse)
+		Expect(err).ToNot(HaveOccurred())
+
+		elasticsearchClient, _ := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
+
+		// Cargo cult. We don't *know* it's slow.
+		By("Waiting for Aiven's slow DNS creation to complete")
+		pollForDNSResolution(parsedResponse.Credentials["hostname"].(string))
+
+		By("Ensuring we can't reach the provisioned service")
+		getURI := elasticsearchClient.URI + "/"
+		_, err = elasticsearchClient.Get(getURI)
+		Expect(err).To(HaveOccurred())
+
+		netErr, ok := err.(net.Error)
+		Expect(ok).To(BeTrue())
+		Expect(netErr.Timeout()).To(BeTrue())
+	})
 })
 
 func pollForCompletion(bt brokertesting.BrokerTester, instanceID, operationData string, expectedResponse brokerapi.LastOperationResponse) {
@@ -199,6 +296,17 @@ func pollForAvailability(esClient *elastic.Client) {
 		5*time.Minute,
 		30*time.Second,
 	).ShouldNot(BeEmpty())
+}
+
+func pollForDNSResolution(hostname string) {
+	Eventually(
+		func() error {
+			_, err := net.LookupHost(hostname)
+			return err
+		},
+		5*time.Minute,
+		5*time.Second,
+	).ShouldNot(HaveOccurred())
 }
 
 func pollForBackupCompletion(instanceID string) {
