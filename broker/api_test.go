@@ -169,6 +169,11 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 		})
+		It("responds with HTTP Status Gone if the service instance doesn't exist", func() {
+			fakeProvider.DeprovisionReturns("", errors.New("some deprovisioning error"))
+			res := brokerTester.Deprovision("missing-service-instance", service1, plan1, true)
+			Expect(res.Code).To(Equal(http.StatusGone))
+		})
 	})
 
 	Describe("Bind", func() {
