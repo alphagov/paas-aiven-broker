@@ -15,7 +15,7 @@ type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
 	GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error)
 	GetServiceConnectionDetails(params *GetServiceInput) (string, string, error)
-	DeleteService(params *DeleteServiceInput) (string, error)
+	DeleteService(params *DeleteServiceInput) (string, int, error)
 	CreateServiceUser(params *CreateServiceUserInput) (string, error)
 	DeleteServiceUser(params *DeleteServiceUserInput) (string, error)
 	UpdateService(params *UpdateServiceInput) (string, error)
@@ -166,19 +166,19 @@ func (a *HttpClient) GetServiceConnectionDetails(params *GetServiceInput) (strin
 	return host, port, nil
 }
 
-func (a *HttpClient) DeleteService(params *DeleteServiceInput) (string, error) {
+func (a *HttpClient) DeleteService(params *DeleteServiceInput) (string, int, error) {
 	res, err := a.do("DELETE", fmt.Sprintf("/project/%s/service/%s", a.Project, params.ServiceName), nil)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
+		return "", res.StatusCode, fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
 	}
 
 	b, _ := ioutil.ReadAll(res.Body)
-	return string(b), nil
+	return string(b), res.StatusCode, nil
 }
 
 func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, error) {

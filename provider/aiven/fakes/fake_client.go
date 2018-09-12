@@ -52,18 +52,20 @@ type FakeClient struct {
 		result2 string
 		result3 error
 	}
-	DeleteServiceStub        func(params *aiven.DeleteServiceInput) (string, error)
+	DeleteServiceStub        func(params *aiven.DeleteServiceInput) (string, int, error)
 	deleteServiceMutex       sync.RWMutex
 	deleteServiceArgsForCall []struct {
 		params *aiven.DeleteServiceInput
 	}
 	deleteServiceReturns struct {
 		result1 string
-		result2 error
+		result2 int
+		result3 error
 	}
 	deleteServiceReturnsOnCall map[int]struct {
 		result1 string
-		result2 error
+		result2 int
+		result3 error
 	}
 	CreateServiceUserStub        func(params *aiven.CreateServiceUserInput) (string, error)
 	createServiceUserMutex       sync.RWMutex
@@ -267,7 +269,7 @@ func (fake *FakeClient) GetServiceConnectionDetailsReturnsOnCall(i int, result1 
 	}{result1, result2, result3}
 }
 
-func (fake *FakeClient) DeleteService(params *aiven.DeleteServiceInput) (string, error) {
+func (fake *FakeClient) DeleteService(params *aiven.DeleteServiceInput) (string, int, error) {
 	fake.deleteServiceMutex.Lock()
 	ret, specificReturn := fake.deleteServiceReturnsOnCall[len(fake.deleteServiceArgsForCall)]
 	fake.deleteServiceArgsForCall = append(fake.deleteServiceArgsForCall, struct {
@@ -279,9 +281,9 @@ func (fake *FakeClient) DeleteService(params *aiven.DeleteServiceInput) (string,
 		return fake.DeleteServiceStub(params)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
-	return fake.deleteServiceReturns.result1, fake.deleteServiceReturns.result2
+	return fake.deleteServiceReturns.result1, fake.deleteServiceReturns.result2, fake.deleteServiceReturns.result3
 }
 
 func (fake *FakeClient) DeleteServiceCallCount() int {
@@ -296,26 +298,29 @@ func (fake *FakeClient) DeleteServiceArgsForCall(i int) *aiven.DeleteServiceInpu
 	return fake.deleteServiceArgsForCall[i].params
 }
 
-func (fake *FakeClient) DeleteServiceReturns(result1 string, result2 error) {
+func (fake *FakeClient) DeleteServiceReturns(result1 string, result2 int, result3 error) {
 	fake.DeleteServiceStub = nil
 	fake.deleteServiceReturns = struct {
 		result1 string
-		result2 error
-	}{result1, result2}
+		result2 int
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *FakeClient) DeleteServiceReturnsOnCall(i int, result1 string, result2 error) {
+func (fake *FakeClient) DeleteServiceReturnsOnCall(i int, result1 string, result2 int, result3 error) {
 	fake.DeleteServiceStub = nil
 	if fake.deleteServiceReturnsOnCall == nil {
 		fake.deleteServiceReturnsOnCall = make(map[int]struct {
 			result1 string
-			result2 error
+			result2 int
+			result3 error
 		})
 	}
 	fake.deleteServiceReturnsOnCall[i] = struct {
 		result1 string
-		result2 error
-	}{result1, result2}
+		result2 int
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *FakeClient) CreateServiceUser(params *aiven.CreateServiceUserInput) (string, error) {

@@ -218,10 +218,11 @@ var _ = Describe("Client", func() {
 				ghttp.RespondWith(http.StatusOK, "{}"),
 			))
 
-			actualResponse, err := aivenClient.DeleteService(deleteServiceInput)
+			actualResponse, statusCode, err := aivenClient.DeleteService(deleteServiceInput)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actualResponse).To(Equal("{}"))
+			Expect(statusCode).To(Equal(http.StatusOK))
 		})
 
 		It("returns an error if the http request fails", func() {
@@ -230,10 +231,11 @@ var _ = Describe("Client", func() {
 				ghttp.RespondWith(http.StatusNotFound, "{}"),
 			))
 
-			actualResponse, err := aivenClient.DeleteService(deleteServiceInput)
+			actualResponse, statusCode, err := aivenClient.DeleteService(deleteServiceInput)
 
 			Expect(err).To(MatchError("Error deleting service: 404 status code returned from Aiven"))
 			Expect(actualResponse).To(Equal(""))
+			Expect(statusCode).To(Equal(http.StatusNotFound))
 		})
 	})
 
