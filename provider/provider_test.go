@@ -134,7 +134,7 @@ var _ = Describe("Provider", func() {
 			deprovisionData := provider.DeprovisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 			}
-			fakeAivenClient.DeleteServiceReturnsOnCall(0, "", 0, errors.New("some-error"))
+			fakeAivenClient.DeleteServiceReturnsOnCall(0, errors.New("some-error"))
 
 			_, err := aivenProvider.Deprovision(context.Background(), deprovisionData)
 			Expect(err).To(HaveOccurred())
@@ -144,7 +144,7 @@ var _ = Describe("Provider", func() {
 			deprovisionData := provider.DeprovisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 			}
-			fakeAivenClient.DeleteServiceReturnsOnCall(0, "", 404, errors.New("some-error"))
+			fakeAivenClient.DeleteServiceReturnsOnCall(0, aiven.ErrInstanceDoesNotExist)
 
 			_, err := aivenProvider.Deprovision(context.Background(), deprovisionData)
 			Expect(err).To(MatchError(brokerapi.ErrInstanceDoesNotExist))

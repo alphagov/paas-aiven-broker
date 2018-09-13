@@ -10,7 +10,6 @@ import (
 
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/pivotal-cf/brokerapi"
-	"net/http"
 )
 
 const AIVEN_BASE_URL string = "https://api.aiven.io"
@@ -57,19 +56,17 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 }
 
 func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData DeprovisionData) (operationData string, err error) {
-	_, statusCode, err := ap.Client.DeleteService(&aiven.DeleteServiceInput{
+	err = ap.Client.DeleteService(&aiven.DeleteServiceInput{
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, deprovisionData.InstanceID),
 	})
 
-	if statusCode == http.StatusNotFound {
-		return "", brokerapi.ErrInstanceDoesNotExist
-	}
-
 	if err != nil {
-		return "", err
+		if err == aiven.ErrInstanceDoesNotExist {
+			return "", brokerapi.ErrInstanceDoesNotExist
+		}
 	}
 
-	return "", nil
+	return "", err
 }
 
 type Credentials struct {
