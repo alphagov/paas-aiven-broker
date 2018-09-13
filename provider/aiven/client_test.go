@@ -218,22 +218,31 @@ var _ = Describe("Client", func() {
 				ghttp.RespondWith(http.StatusOK, "{}"),
 			))
 
-			actualResponse, err := aivenClient.DeleteService(deleteServiceInput)
+			err := aivenClient.DeleteService(deleteServiceInput)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actualResponse).To(Equal("{}"))
 		})
 
-		It("returns an error if the http request fails", func() {
+		It("returns a specific error if a 404 is returned", func() {
 			deleteServiceInput := &aiven.DeleteServiceInput{}
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.RespondWith(http.StatusNotFound, "{}"),
 			))
 
-			actualResponse, err := aivenClient.DeleteService(deleteServiceInput)
+			err := aivenClient.DeleteService(deleteServiceInput)
 
-			Expect(err).To(MatchError("Error deleting service: 404 status code returned from Aiven"))
-			Expect(actualResponse).To(Equal(""))
+			Expect(err).To(MatchError(aiven.ErrInstanceDoesNotExist))
+		})
+
+		It("returns an error if the status code is unexpected", func() {
+			deleteServiceInput := &aiven.DeleteServiceInput{}
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.RespondWith(http.StatusTeapot, "{}"),
+			))
+
+			err := aivenClient.DeleteService(deleteServiceInput)
+
+			Expect(err).To(MatchError("Error deleting service: 418 status code returned from Aiven"))
 		})
 	})
 

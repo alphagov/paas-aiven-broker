@@ -56,13 +56,17 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 }
 
 func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData DeprovisionData) (operationData string, err error) {
-	_, err = ap.Client.DeleteService(&aiven.DeleteServiceInput{
+	err = ap.Client.DeleteService(&aiven.DeleteServiceInput{
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, deprovisionData.InstanceID),
 	})
+
 	if err != nil {
-		return "", err
+		if err == aiven.ErrInstanceDoesNotExist {
+			return "", brokerapi.ErrInstanceDoesNotExist
+		}
 	}
-	return "", nil
+
+	return "", err
 }
 
 type Credentials struct {

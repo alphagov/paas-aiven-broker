@@ -178,6 +178,10 @@ var _ = Describe("Broker", func() {
 		deprovisionResponse := brokerapi.DeprovisionResponse{}
 		err = json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
 		Expect(err).NotTo(HaveOccurred())
+
+		By("Returning a 410 response when trying to delete a non-existent instance")
+		res = brokerTester.Deprovision(instanceID, "uuid-1", "uuid-2", ASYNC_ALLOWED)
+		Expect(res.Code).To(Equal(http.StatusGone))
 	})
 
 	// 99% of this IP whitelisting test is stolen from the lifecycle mgmt test, below.

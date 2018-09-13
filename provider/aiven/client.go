@@ -15,7 +15,7 @@ type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
 	GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error)
 	GetServiceConnectionDetails(params *GetServiceInput) (string, string, error)
-	DeleteService(params *DeleteServiceInput) (string, error)
+	DeleteService(params *DeleteServiceInput) error
 	CreateServiceUser(params *CreateServiceUserInput) (string, error)
 	DeleteServiceUser(params *DeleteServiceUserInput) (string, error)
 	UpdateService(params *UpdateServiceInput) (string, error)
@@ -166,19 +166,23 @@ func (a *HttpClient) GetServiceConnectionDetails(params *GetServiceInput) (strin
 	return host, port, nil
 }
 
-func (a *HttpClient) DeleteService(params *DeleteServiceInput) (string, error) {
+var ErrInstanceDoesNotExist = errors.New("Error deleting service: service instance does not exist")
+
+func (a *HttpClient) DeleteService(params *DeleteServiceInput) error {
 	res, err := a.do("DELETE", fmt.Sprintf("/project/%s/service/%s", a.Project, params.ServiceName), nil)
 	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
+		return err
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
-	return string(b), nil
+	if res.StatusCode == http.StatusOK {
+		return nil
+	}
+
+	if res.StatusCode == http.StatusNotFound {
+		return ErrInstanceDoesNotExist
+	}
+
+	return fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
 }
 
 func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, error) {

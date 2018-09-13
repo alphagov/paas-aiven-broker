@@ -134,10 +134,20 @@ var _ = Describe("Provider", func() {
 			deprovisionData := provider.DeprovisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 			}
-			fakeAivenClient.DeleteServiceReturnsOnCall(0, "", errors.New("some-error"))
+			fakeAivenClient.DeleteServiceReturnsOnCall(0, errors.New("some-error"))
 
 			_, err := aivenProvider.Deprovision(context.Background(), deprovisionData)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("Returns a specific error if the instance has already been deleted", func() {
+			deprovisionData := provider.DeprovisionData{
+				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
+			}
+			fakeAivenClient.DeleteServiceReturnsOnCall(0, aiven.ErrInstanceDoesNotExist)
+
+			_, err := aivenProvider.Deprovision(context.Background(), deprovisionData)
+			Expect(err).To(MatchError(brokerapi.ErrInstanceDoesNotExist))
 		})
 	})
 
