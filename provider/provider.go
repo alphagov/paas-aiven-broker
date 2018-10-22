@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -130,11 +131,28 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 		return "", err
 	}
 
+	ipFilter, err := ParseIPWhitelist(os.Getenv("IP_WHITELIST"))
+	if err != nil {
+		return "", err
+	}
+
 	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, updateData.InstanceID),
 		Plan:        plan.AivenPlan,
+		UserConfig: aiven.UserConfig{
+			ElasticsearchVersion: plan.ElasticsearchVersion,
+			IPFilter:             ipFilter,
+		},
 	})
-	if err != nil {
+
+	switch err := err.(type) {
+	case aiven.ErrInvalidUpdate:
+		return "", brokerapi.NewFailureResponseBuilder(
+			err,
+			http.StatusUnprocessableEntity,
+			"plan-change-not-supported",
+		).WithErrorKey("PlanChangeNotSupported").Build()
+	default:
 		return "", err
 	}
 
