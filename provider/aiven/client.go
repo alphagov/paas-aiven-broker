@@ -37,6 +37,14 @@ func NewHttpClient(baseURL, token, project string) *HttpClient {
 	}
 }
 
+type ErrInvalidUpdate struct {
+	Message string
+}
+
+func (p ErrInvalidUpdate) Error() string {
+	return p.Message
+}
+
 type CreateServiceInput struct {
 	Cloud       string     `json:"cloud,omitempty"`
 	GroupName   string     `json:"group_name,omitempty"`
@@ -107,8 +115,17 @@ type ServiceUriParams struct {
 }
 
 type UpdateServiceInput struct {
-	ServiceName string `json:"-"`
-	Plan        string `json:"plan,omitempty"`
+	ServiceName string     `json:"-"`
+	Plan        string     `json:"plan,omitempty"`
+	UserConfig  UserConfig `json:"user_config"`
+}
+
+type AivenErrorResponse struct {
+	Errors []struct {
+		Message string `json:"message"`
+		Status  int    `json:"status"`
+	} `json:"errors"`
+	Message string `json:"message"`
 }
 
 func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
@@ -258,11 +275,21 @@ func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error updating service: %d status code returned from Aiven", res.StatusCode)
+	b, _ := ioutil.ReadAll(res.Body)
+
+	if res.StatusCode == http.StatusBadRequest {
+		var errorResponse AivenErrorResponse
+		jsonErr := json.Unmarshal(b, &errorResponse)
+		if jsonErr != nil {
+			return "", fmt.Errorf("Error updating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+		}
+		return "", ErrInvalidUpdate{fmt.Sprintf("Invalid Update: %s", errorResponse.Message)}
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error updating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
 	return string(b), nil
 }
 

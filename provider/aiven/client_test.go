@@ -332,8 +332,12 @@ var _ = Describe("Client", func() {
 			updateServiceInput := &aiven.UpdateServiceInput{
 				ServiceName: "my-service",
 				Plan:        "new-plan",
+				UserConfig: aiven.UserConfig{
+					ElasticsearchVersion: "6",
+					IPFilter:             []string{"1.2.3.4"},
+				},
 			}
-			expectedBody := []byte(`{"plan":"new-plan"}`)
+			expectedBody, _ := json.Marshal(updateServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("PUT", "/v1beta/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
@@ -356,7 +360,31 @@ var _ = Describe("Client", func() {
 
 			actualResponse, err := aivenClient.UpdateService(updateServiceInput)
 
-			Expect(err).To(MatchError("Error updating service: 404 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error updating service: 404 status code returned from Aiven: '{}'"))
+			Expect(actualResponse).To(Equal(""))
+		})
+
+		It("returns the right error type if the operation is invalid", func() {
+			updateServiceInput := &aiven.UpdateServiceInput{}
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.RespondWith(http.StatusBadRequest, `
+				{
+					"errors" : [
+							{
+								"message" : "Elasticsearch major version downgrade is not possible",
+								"status" : 400
+							}
+					],
+					"message" : "Elasticsearch major version downgrade is not possible"
+				}
+				`),
+			))
+
+			actualResponse, err := aivenClient.UpdateService(updateServiceInput)
+
+			Expect(err).To(MatchError(
+				aiven.ErrInvalidUpdate{"Invalid Update: Elasticsearch major version downgrade is not possible"},
+			))
 			Expect(actualResponse).To(Equal(""))
 		})
 	})

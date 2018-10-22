@@ -3,6 +3,7 @@ package provider_test
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"time"
 
@@ -242,6 +243,7 @@ var _ = Describe("Provider", func() {
 
 	Describe("Update", func() {
 		It("should pass the correct parameters to the Aiven client", func() {
+			os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 				Details: brokerapi.UpdateDetails{
@@ -257,11 +259,15 @@ var _ = Describe("Provider", func() {
 			expectedParameters := &aiven.UpdateServiceInput{
 				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Plan:        "startup-2",
+				UserConfig: aiven.UserConfig{
+					ElasticsearchVersion: "6",
+					IPFilter:             []string{"1.2.3.4", "5.6.7.8"},
+				},
 			}
 			Expect(fakeAivenClient.UpdateServiceArgsForCall(0)).To(Equal(expectedParameters))
 		})
 
-		It("should return an error if the client fails to update", func() {
+		It("should return an error if the client returns error", func() {
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 				Details: brokerapi.UpdateDetails{
@@ -275,6 +281,29 @@ var _ = Describe("Provider", func() {
 			_, err := aivenProvider.Update(context.Background(), updateData)
 
 			Expect(err).To(HaveOccurred())
+			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
+		})
+
+		It("should returns StatusUnprocessableEntity (422) if the client returns invalid update error", func() {
+			updateData := provider.UpdateData{
+				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
+				Details: brokerapi.UpdateDetails{
+					ServiceID:      "uuid-1",
+					PlanID:         "uuid-3",
+					PreviousValues: brokerapi.PreviousValues{PlanID: "uuid-2"},
+				},
+			}
+			fakeAivenClient.UpdateServiceReturnsOnCall(0, "", aiven.ErrInvalidUpdate{"not-valid"})
+
+			_, err := aivenProvider.Update(context.Background(), updateData)
+
+			expectedErr := brokerapi.NewFailureResponseBuilder(
+				aiven.ErrInvalidUpdate{"not-valid"},
+				http.StatusUnprocessableEntity,
+				"plan-change-not-supported",
+			).WithErrorKey("PlanChangeNotSupported").Build()
+
+			Expect(err).To(MatchError(expectedErr))
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 		})
 	})

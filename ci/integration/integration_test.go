@@ -63,7 +63,7 @@ var _ = Describe("Broker", func() {
 						"id": "uuid-2",
 						"name": "basic",
 						"aiven_plan": "startup-4",
-						"elasticsearch_version": "6"
+						"elasticsearch_version": "5"
 					}, {
 						"id": "uuid-3",
 						"name": "supra",
@@ -163,6 +163,11 @@ var _ = Describe("Broker", func() {
 			State:       brokerapi.Succeeded,
 			Description: "Last operation succeeded",
 		})
+
+		By("checking the version has actually been updated")
+		version, err := elasticsearchClient.Version()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(version).To(HavePrefix("6."))
 
 		By("Unbinding")
 		res = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
