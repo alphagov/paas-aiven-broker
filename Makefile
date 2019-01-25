@@ -4,7 +4,7 @@ test: unit integration
 
 integration: export EGRESS_IP=$(shell curl --silent icanhazip.com)
 integration:
-	ginkgo -v ci/integration
+	ginkgo -v --progress ci/integration
 
 unit: export SERVICE_NAME_PREFIX=test
 unit: export AIVEN_API_TOKEN=token

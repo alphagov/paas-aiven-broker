@@ -1,0 +1,25 @@
+{
+        "basic_auth_username": "foo",
+        "basic_auth_password": "bar",
+        "log_level": "info",
+        "cloud": "aws-eu-west-2",
+        "catalog": {
+                "services": [{
+                        "id": "uuid-1",
+                        "name": "elasticsearch",
+                        "description": "Elasticsearch instances provisioned via Aiven",
+                        "bindable": true,
+                        "plan_updateable": true,
+                        "requires": [],
+                        "metadata": {},
+                        "plans": [{
+                                "id": "uuid-2",
+                                "name": "basic",
+                                "aiven_plan": "startup-1",
+                                "elasticsearch_version": "6",
+                                "description": "1 CPU, 1 GB RAM, 16 GB SSD",
+                                "metadata": {}
+                        }]
+                }]
+        }
+}

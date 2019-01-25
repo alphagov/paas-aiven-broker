@@ -45,7 +45,7 @@ var _ = Describe("Broker", func() {
 		bindingID = uuid.NewV4().String()
 	})
 
-	It("should manage the lifecycle of an Elasticsearch cluster", func() {
+	FIt("should manage the lifecycle of an Elasticsearch cluster", func() {
 		By("initializing")
 
 		egressIP := os.Getenv("EGRESS_IP")
@@ -97,7 +97,10 @@ var _ = Describe("Broker", func() {
 			ServiceID: "uuid-1",
 			PlanID:    "uuid-2",
 		}, ASYNC_ALLOWED)
+		logger.Info(fmt.Sprintf("%v", res))
 		Expect(res.Code).To(Equal(http.StatusAccepted))
+
+		os.Exit(1)
 
 		By("Polling for success")
 		pollForCompletion(brokerTester, instanceID, "", brokerapi.LastOperationResponse{
