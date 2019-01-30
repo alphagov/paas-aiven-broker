@@ -144,8 +144,8 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven", res.StatusCode)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
-	return string(b), nil
+	b, err := ioutil.ReadAll(res.Body)
+	return string(b), err
 }
 
 func (a *HttpClient) GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error) {
@@ -218,9 +218,8 @@ func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, 
 		return "", fmt.Errorf("Error creating service user: %d status code returned from Aiven", res.StatusCode)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
 	createServiceUserResponse := &CreateServiceUserResponse{}
-	if err := json.Unmarshal(b, createServiceUserResponse); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(createServiceUserResponse); err != nil {
 		return "", err
 	}
 
@@ -241,8 +240,8 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven", res.StatusCode)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
-	return string(b), nil
+	b, err := ioutil.ReadAll(res.Body)
+	return string(b), err
 }
 
 func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, error) {
@@ -256,9 +255,8 @@ func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, e
 		return nil, fmt.Errorf("Error getting service: %d status code returned from Aiven", res.StatusCode)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
 	getServiceResponse := &GetServiceResponse{}
-	if err := json.Unmarshal(b, getServiceResponse); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(getServiceResponse); err != nil {
 		return nil, err
 	}
 	return getServiceResponse, nil
@@ -275,7 +273,10 @@ func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
-	b, _ := ioutil.ReadAll(res.Body)
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
 
 	if res.StatusCode == http.StatusBadRequest {
 		var errorResponse AivenErrorResponse
