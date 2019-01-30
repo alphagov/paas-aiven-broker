@@ -42,7 +42,7 @@ var _ = Describe("Client", func() {
 			}
 			expectedBody, _ := json.Marshal(createServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/v1beta/project/my-project/service"),
+				ghttp.VerifyRequest("POST", "/v1/project/my-project/service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.VerifyBody(expectedBody),
@@ -77,7 +77,7 @@ var _ = Describe("Client", func() {
 			expectedUpdateTime := "2018-06-21T10:01:05.000040+00:00"
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, fmt.Sprintf(`{"service": {"state": "RUNNING", "update_time": "%s"}}`, expectedUpdateTime)),
@@ -97,7 +97,7 @@ var _ = Describe("Client", func() {
 			}
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, `{"service": {"update_time": "2018-06-21T10:01:05.000040+00:00"}}`),
@@ -115,7 +115,7 @@ var _ = Describe("Client", func() {
 			}
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, `{"service": {"state": "RUNNING"}}`),
@@ -134,7 +134,7 @@ var _ = Describe("Client", func() {
 			}
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusNotFound, "{}"),
@@ -154,7 +154,7 @@ var _ = Describe("Client", func() {
 			}
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, `{"service": {"service_uri_params": {"host": "example.com", "port": "23362"}}}`),
@@ -173,7 +173,7 @@ var _ = Describe("Client", func() {
 			}
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, `{"service": {"nonsense": "foo"}}`),
@@ -192,7 +192,7 @@ var _ = Describe("Client", func() {
 			}
 
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("GET", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusNotFound, "{}"),
@@ -212,7 +212,7 @@ var _ = Describe("Client", func() {
 				ServiceName: "name",
 			}
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("DELETE", "/v1beta/project/my-project/service/name"),
+				ghttp.VerifyRequest("DELETE", "/v1/project/my-project/service/name"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, "{}"),
@@ -254,7 +254,7 @@ var _ = Describe("Client", func() {
 			}
 			expectedBody := []byte(`{"username":"user"}`)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("POST", "/v1beta/project/my-project/service/my-service/user"),
+				ghttp.VerifyRequest("POST", "/v1/project/my-project/service/my-service/user"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.VerifyBody(expectedBody),
@@ -302,7 +302,7 @@ var _ = Describe("Client", func() {
 				Username:    "my-user",
 			}
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("DELETE", "/v1beta/project/my-project/service/my-service/user/my-user"),
+				ghttp.VerifyRequest("DELETE", "/v1/project/my-project/service/my-service/user/my-user"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.RespondWith(http.StatusOK, "{}"),
@@ -339,7 +339,7 @@ var _ = Describe("Client", func() {
 			}
 			expectedBody, _ := json.Marshal(updateServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
-				ghttp.VerifyRequest("PUT", "/v1beta/project/my-project/service/my-service"),
+				ghttp.VerifyRequest("PUT", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
 				ghttp.VerifyBody(expectedBody),

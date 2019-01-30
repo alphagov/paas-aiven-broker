@@ -327,7 +327,7 @@ func (a *HttpClient) do(method, path string, body []byte) (*http.Response, error
 }
 
 func (a *HttpClient) requestBuilder(method, path string, body []byte) (*http.Request, error) {
-	req, err := http.NewRequest(method, fmt.Sprintf("%s/v1beta%s", a.BaseURL, path), bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, fmt.Sprintf("%s/v1%s", a.BaseURL, path), bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
