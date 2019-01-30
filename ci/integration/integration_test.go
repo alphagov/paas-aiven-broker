@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -34,47 +33,43 @@ type BindingResponse struct {
 }
 
 var _ = Describe("Broker", func() {
+	const configJSON = `{
+		"catalog": {
+			"services": [{
+				"id": "uuid-service",
+				"plan_updateable": true,
+				"plans": [{
+					"id": "uuid-basic-5",
+					"name": "basic-5",
+					"aiven_plan": "startup-4",
+					"elasticsearch_version": "5"
+				}, {
+					"id": "uuid-basic-6",
+					"name": "basic-6",
+					"aiven_plan": "startup-4",
+					"elasticsearch_version": "6"
+				}, {
+					"id": "uuid-supra-6",
+					"name": "supra-6",
+					"aiven_plan": "startup-8",
+					"elasticsearch_version": "6"
+				}]
+			}]
+		}
+	}`
 
 	var (
-		instanceID string
-		bindingID  string
+		instanceID   string
+		bindingID    string
+		brokerTester brokertesting.BrokerTester
 	)
 
 	BeforeEach(func() {
 		instanceID = uuid.NewV4().String()
 		bindingID = uuid.NewV4().String()
-	})
 
-	It("should manage the lifecycle of an Elasticsearch cluster", func() {
 		By("initializing")
-
-		egressIP := os.Getenv("EGRESS_IP")
-		Expect(egressIP).ToNot(BeEmpty())
-
-		os.Setenv("IP_WHITELIST", egressIP)
-		defer os.Unsetenv("IP_WHITELIST")
-
-		configJSON := `{
-			"catalog": {
-				"services": [{
-					"id": "uuid-1",
-					"plan_updateable": true,
-					"plans": [{
-						"id": "uuid-2",
-						"name": "basic",
-						"aiven_plan": "startup-4",
-						"elasticsearch_version": "5"
-					}, {
-						"id": "uuid-3",
-						"name": "supra",
-						"aiven_plan": "startup-8",
-						"elasticsearch_version": "6"
-					}]
-				}]
-			}
-		}`
-
-		brokerConfig, err := broker.NewConfig(bytes.NewBuffer([]byte(configJSON)))
+		brokerConfig, err := broker.NewConfig(strings.NewReader(configJSON))
 		Expect(err).ToNot(HaveOccurred())
 
 		aivenProvider, err := provider.New(brokerConfig.Provider)
@@ -86,16 +81,23 @@ var _ = Describe("Broker", func() {
 
 		brokerServer := broker.NewAPI(aivenBroker, logger, brokerConfig)
 
-		brokerTester := brokertesting.New(brokerapi.BrokerCredentials{
-			Username: "foo",
-			Password: "bar",
+		brokerTester = brokertesting.New(brokerapi.BrokerCredentials{
+			Username: brokerConfig.API.BasicAuthUsername,
+			Password: brokerConfig.API.BasicAuthPassword,
 		}, brokerServer)
+	})
+
+	It("should manage the lifecycle of an Elasticsearch cluster", func() {
+		egressIP := os.Getenv("EGRESS_IP")
+		Expect(egressIP).ToNot(BeEmpty())
+
+		os.Setenv("IP_WHITELIST", egressIP)
+		defer os.Unsetenv("IP_WHITELIST")
 
 		By("Provisioning")
-
 		res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
-			ServiceID: "uuid-1",
-			PlanID:    "uuid-2",
+			ServiceID: "uuid-service",
+			PlanID:    "uuid-basic-5",
 		}, ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusAccepted))
 
@@ -107,13 +109,13 @@ var _ = Describe("Broker", func() {
 
 		By("Binding")
 		res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
-			ServiceID: "uuid-1",
-			PlanID:    "uuid-2",
+			ServiceID: "uuid-service",
+			PlanID:    "uuid-basic-5",
 		})
 		Expect(res.Code).To(Equal(http.StatusCreated))
 
 		parsedResponse := BindingResponse{}
-		err = json.NewDecoder(res.Body).Decode(&parsedResponse)
+		err := json.NewDecoder(res.Body).Decode(&parsedResponse)
 		Expect(err).ToNot(HaveOccurred())
 		// Ensure returned credentials follow guidlines in https://docs.cloudfoundry.org/services/binding-credentials.html
 		var str string
@@ -153,8 +155,8 @@ var _ = Describe("Broker", func() {
 
 		By("updating")
 		res = brokerTester.Update(instanceID, brokertesting.RequestBody{
-			ServiceID: "uuid-1",
-			PlanID:    "uuid-3",
+			ServiceID: "uuid-service",
+			PlanID:    "uuid-supra-6",
 		}, ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusAccepted))
 
@@ -171,13 +173,13 @@ var _ = Describe("Broker", func() {
 
 		By("Unbinding")
 		res = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
-			ServiceID: "uuid-1",
-			PlanID:    "uuid-2",
+			ServiceID: "uuid-service",
+			PlanID:    "uuid-supra-6",
 		})
 		Expect(res.Code).To(Equal(http.StatusOK))
 
 		By("Deprovisioning")
-		res = brokerTester.Deprovision(instanceID, "uuid-1", "uuid-2", ASYNC_ALLOWED)
+		res = brokerTester.Deprovision(instanceID, "uuid-service", "uuid-supra-6", ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusOK))
 
 		deprovisionResponse := brokerapi.DeprovisionResponse{}
@@ -185,65 +187,30 @@ var _ = Describe("Broker", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Returning a 410 response when trying to delete a non-existent instance")
-		res = brokerTester.Deprovision(instanceID, "uuid-1", "uuid-2", ASYNC_ALLOWED)
+		res = brokerTester.Deprovision(instanceID, "uuid-service", "uuid-supra-6", ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusGone))
 	})
 
 	// 99% of this IP whitelisting test is stolen from the lifecycle mgmt test, below.
 	// Refactor opportunity!
 	It("should enforce IP whitelisting if configured to do so", func() {
-		By("initializing")
-
-		configJSON := `{
-			"catalog": {
-				"services": [{
-					"id": "uuid-1",
-					"plan_updateable": true,
-					"plans": [{
-						"id": "uuid-2",
-						"name": "basic",
-						"aiven_plan": "startup-4",
-						"elasticsearch_version": "6"
-					}]
-				}]
-			}
-		}`
-
-		brokerConfig, err := broker.NewConfig(bytes.NewBuffer([]byte(configJSON)))
-		Expect(err).ToNot(HaveOccurred())
-
-		aivenProvider, err := provider.New(brokerConfig.Provider)
-		Expect(err).ToNot(HaveOccurred())
-
-		logger := lager.NewLogger("AivenServiceBroker")
-		logger.RegisterSink(lager.NewWriterSink(os.Stdout, brokerConfig.API.LagerLogLevel))
-
 		os.Setenv("IP_WHITELIST", "8.8.8.8")
 		defer os.Unsetenv("IP_WHITELIST")
-
-		aivenBroker := broker.New(brokerConfig, aivenProvider, logger)
-
-		brokerServer := broker.NewAPI(aivenBroker, logger, brokerConfig)
-
-		brokerTester := brokertesting.New(brokerapi.BrokerCredentials{
-			Username: "foo",
-			Password: "bar",
-		}, brokerServer)
 
 		By("Provisioning")
 
 		res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
-			ServiceID: "uuid-1",
-			PlanID:    "uuid-2",
+			ServiceID: "uuid-service",
+			PlanID:    "uuid-basic-6",
 		}, ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusAccepted))
 
 		defer func() {
 			_ = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID: "uuid-1",
-				PlanID:    "uuid-2",
+				ServiceID: "uuid-service",
+				PlanID:    "uuid-basic-6",
 			})
-			_ = brokerTester.Deprovision(instanceID, "uuid-1", "uuid-2", ASYNC_ALLOWED)
+			_ = brokerTester.Deprovision(instanceID, "uuid-service", "uuid-basic-6", ASYNC_ALLOWED)
 		}()
 
 		By("Polling for success")
@@ -254,13 +221,13 @@ var _ = Describe("Broker", func() {
 
 		By("Binding")
 		res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
-			ServiceID: "uuid-1",
-			PlanID:    "uuid-2",
+			ServiceID: "uuid-service",
+			PlanID:    "uuid-basic-6",
 		})
 		Expect(res.Code).To(Equal(http.StatusCreated))
 
 		parsedResponse := BindingResponse{}
-		err = json.NewDecoder(res.Body).Decode(&parsedResponse)
+		err := json.NewDecoder(res.Body).Decode(&parsedResponse)
 		Expect(err).ToNot(HaveOccurred())
 
 		elasticsearchClient, _ := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
