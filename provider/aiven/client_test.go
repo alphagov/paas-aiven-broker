@@ -63,7 +63,7 @@ var _ = Describe("Client", func() {
 
 			actualService, err := aivenClient.CreateService(createServiceInput)
 
-			Expect(err).To(MatchError("Error creating service: 404 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error creating service: 404 status code returned from Aiven: '{}'"))
 			Expect(actualService).To(Equal(""))
 		})
 	})
@@ -142,7 +142,7 @@ var _ = Describe("Client", func() {
 
 			actualState, _, err := aivenClient.GetServiceStatus(getServiceInput)
 
-			Expect(err).To(MatchError("Error getting service: 404 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error getting service: 404 status code returned from Aiven: '{}'"))
 			Expect(actualState).To(Equal(aiven.ServiceStatus("")))
 		})
 	})
@@ -200,7 +200,7 @@ var _ = Describe("Client", func() {
 
 			host, port, err := aivenClient.GetServiceConnectionDetails(getServiceInput)
 
-			Expect(err).To(MatchError("Error getting service: 404 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error getting service: 404 status code returned from Aiven: '{}'"))
 			Expect(host).To(Equal(""))
 			Expect(port).To(Equal(""))
 		})
@@ -242,7 +242,7 @@ var _ = Describe("Client", func() {
 
 			err := aivenClient.DeleteService(deleteServiceInput)
 
-			Expect(err).To(MatchError("Error deleting service: 418 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error deleting service: 418 status code returned from Aiven: '{}'"))
 		})
 	})
 
@@ -275,7 +275,7 @@ var _ = Describe("Client", func() {
 
 			actualPassword, err := aivenClient.CreateServiceUser(createServiceUserInput)
 
-			Expect(err).To(MatchError("Error creating service user: 403 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error creating service user: 403 status code returned from Aiven: '{}'"))
 			Expect(actualPassword).To(Equal(""))
 		})
 
@@ -322,7 +322,7 @@ var _ = Describe("Client", func() {
 
 			actualResponse, err := aivenClient.DeleteServiceUser(deleteServiceUserInput)
 
-			Expect(err).To(MatchError("Error deleting service user: 403 status code returned from Aiven"))
+			Expect(err).To(MatchError("Error deleting service user: 403 status code returned from Aiven: '{}'"))
 			Expect(actualResponse).To(Equal(""))
 		})
 	})

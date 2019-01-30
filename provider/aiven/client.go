@@ -139,12 +139,15 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven", res.StatusCode)
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
 	return string(b), nil
 }
 
@@ -190,6 +193,7 @@ func (a *HttpClient) DeleteService(params *DeleteServiceInput) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
 		return nil
@@ -199,7 +203,11 @@ func (a *HttpClient) DeleteService(params *DeleteServiceInput) error {
 		return ErrInstanceDoesNotExist
 	}
 
-	return fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("Error deleting service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 }
 
 func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, error) {
@@ -215,12 +223,15 @@ func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, 
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error creating service user: %d status code returned from Aiven", res.StatusCode)
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", err
+		}
+		return "", fmt.Errorf("Error creating service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
 	createServiceUserResponse := &CreateServiceUserResponse{}
-	if err := json.Unmarshal(b, createServiceUserResponse); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(createServiceUserResponse); err != nil {
 		return "", err
 	}
 
@@ -237,11 +248,14 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 	}
 	defer res.Body.Close()
 
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven", res.StatusCode)
+		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
 	return string(b), nil
 }
 
@@ -253,12 +267,15 @@ func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, e
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error getting service: %d status code returned from Aiven", res.StatusCode)
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Error getting service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
-	b, _ := ioutil.ReadAll(res.Body)
 	getServiceResponse := &GetServiceResponse{}
-	if err := json.Unmarshal(b, getServiceResponse); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(getServiceResponse); err != nil {
 		return nil, err
 	}
 	return getServiceResponse, nil
@@ -275,7 +292,10 @@ func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
-	b, _ := ioutil.ReadAll(res.Body)
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
 
 	if res.StatusCode == http.StatusBadRequest {
 		var errorResponse AivenErrorResponse
