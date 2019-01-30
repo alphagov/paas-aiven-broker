@@ -139,13 +139,16 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 		return "", err
 	}
 	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven", res.StatusCode)
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
 	}
 
-	b, err := ioutil.ReadAll(res.Body)
-	return string(b), err
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
+	return string(b), nil
 }
 
 func (a *HttpClient) GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error) {
@@ -190,6 +193,7 @@ func (a *HttpClient) DeleteService(params *DeleteServiceInput) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
 		return nil
@@ -199,7 +203,11 @@ func (a *HttpClient) DeleteService(params *DeleteServiceInput) error {
 		return ErrInstanceDoesNotExist
 	}
 
-	return fmt.Errorf("Error deleting service: %d status code returned from Aiven", res.StatusCode)
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("Error deleting service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 }
 
 func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, error) {
@@ -215,7 +223,11 @@ func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, 
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error creating service user: %d status code returned from Aiven", res.StatusCode)
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", err
+		}
+		return "", fmt.Errorf("Error creating service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
 	createServiceUserResponse := &CreateServiceUserResponse{}
@@ -236,12 +248,15 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 	}
 	defer res.Body.Close()
 
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven", res.StatusCode)
+		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
-	b, err := ioutil.ReadAll(res.Body)
-	return string(b), err
+	return string(b), nil
 }
 
 func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, error) {
@@ -252,7 +267,11 @@ func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, e
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Error getting service: %d status code returned from Aiven", res.StatusCode)
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Error getting service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
 	getServiceResponse := &GetServiceResponse{}
