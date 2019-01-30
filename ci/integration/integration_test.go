@@ -87,6 +87,11 @@ var _ = Describe("Broker", func() {
 		}, brokerServer)
 	})
 
+	AfterEach(func() {
+		// Ensure the instance gets cleaned up on test failures
+		_ = brokerTester.Deprovision(instanceID, "uuid-service", "uuid-basic-5", ASYNC_ALLOWED)
+	})
+
 	It("should manage the lifecycle of an Elasticsearch cluster", func() {
 		egressIP := os.Getenv("EGRESS_IP")
 		Expect(egressIP).ToNot(BeEmpty())
@@ -204,14 +209,6 @@ var _ = Describe("Broker", func() {
 			PlanID:    "uuid-basic-6",
 		}, ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusAccepted))
-
-		defer func() {
-			_ = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID: "uuid-service",
-				PlanID:    "uuid-basic-6",
-			})
-			_ = brokerTester.Deprovision(instanceID, "uuid-service", "uuid-basic-6", ASYNC_ALLOWED)
-		}()
 
 		By("Polling for success")
 		pollForCompletion(brokerTester, instanceID, "", brokerapi.LastOperationResponse{
