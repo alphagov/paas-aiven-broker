@@ -130,7 +130,7 @@ var _ = Describe("Broker", func() {
 		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("username", BeAssignableToTypeOf(str)))
 		Expect(parsedResponse.Credentials).To(HaveKeyWithValue("password", BeAssignableToTypeOf(str)))
 
-		elasticsearchClient, _ := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
+		elasticsearchClient := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
 
 		By("Working around Aiven's slow DNS creation")
 		pollForAvailability(elasticsearchClient)
@@ -227,7 +227,7 @@ var _ = Describe("Broker", func() {
 		err := json.NewDecoder(res.Body).Decode(&parsedResponse)
 		Expect(err).ToNot(HaveOccurred())
 
-		elasticsearchClient, _ := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
+		elasticsearchClient := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
 
 		// Cargo cult. We don't *know* it's slow.
 		By("Waiting for Aiven's slow DNS creation to complete")

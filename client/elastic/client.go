@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -22,12 +21,12 @@ type elasticsearchResponse struct {
 	Version elasticsearchResponseVersion `json:"version,omitempty"`
 }
 
-func New(uri string, httpClient *http.Client) (*Client, error) {
+func New(uri string, httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = &http.Client{}
 	}
 
-	return &Client{http: httpClient, URI: uri}, nil
+	return &Client{http: httpClient, URI: uri}
 }
 
 func (c *Client) Ping() (*elasticsearchResponse, error) {
@@ -49,14 +48,9 @@ func (c *Client) Ping() (*elasticsearchResponse, error) {
 	return r, nil
 }
 
-func (c *Client) readBody(body io.ReadCloser) (*elasticsearchResponse, error) {
-	bodyBytes, err := ioutil.ReadAll(body)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *Client) readBody(body io.Reader) (*elasticsearchResponse, error) {
 	data := elasticsearchResponse{}
-	err = json.Unmarshal(bodyBytes, &data)
+	err := json.NewDecoder(body).Decode(&data)
 	if err != nil {
 		return nil, err
 	}
