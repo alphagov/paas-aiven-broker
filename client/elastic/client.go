@@ -23,7 +23,7 @@ type elasticsearchResponse struct {
 
 func New(uri string, httpClient *http.Client) *Client {
 	if httpClient == nil {
-		httpClient = &http.Client{}
+		httpClient = http.DefaultClient
 	}
 
 	return &Client{http: httpClient, URI: uri}

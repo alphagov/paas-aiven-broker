@@ -132,9 +132,6 @@ var _ = Describe("Broker", func() {
 
 		elasticsearchClient := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
 
-		By("Working around Aiven's slow DNS creation")
-		pollForAvailability(elasticsearchClient)
-
 		By("ensuring credentials allow writing data")
 		putURI := elasticsearchClient.URI + "/twitter/tweet/1?op_type=create"
 		request, err := http.NewRequest("PUT", putURI, strings.NewReader(putData))
@@ -229,10 +226,6 @@ var _ = Describe("Broker", func() {
 
 		elasticsearchClient := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
 
-		// Cargo cult. We don't *know* it's slow.
-		By("Waiting for Aiven's slow DNS creation to complete")
-		pollForDNSResolution(parsedResponse.Credentials["hostname"].(string))
-
 		By("Ensuring we can't reach the provisioned service")
 		getURI := elasticsearchClient.URI + "/"
 		_, err = elasticsearchClient.Get(getURI)
@@ -258,28 +251,6 @@ func pollForCompletion(bt brokertesting.BrokerTester, instanceID, operationData 
 		DEFAULT_TIMEOUT,
 		30*time.Second,
 	).Should(Equal(expectedResponse))
-}
-
-func pollForAvailability(esClient *elastic.Client) {
-	Eventually(
-		func() string {
-			version, _ := esClient.Version()
-			return version
-		},
-		5*time.Minute,
-		30*time.Second,
-	).ShouldNot(BeEmpty())
-}
-
-func pollForDNSResolution(hostname string) {
-	Eventually(
-		func() error {
-			_, err := net.LookupHost(hostname)
-			return err
-		},
-		5*time.Minute,
-		5*time.Second,
-	).ShouldNot(HaveOccurred())
 }
 
 func pollForBackupCompletion(instanceID string) {
