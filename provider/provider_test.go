@@ -3,8 +3,11 @@ package provider_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/alphagov/paas-aiven-broker/provider"
@@ -14,6 +17,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/ghttp"
 )
 
 var _ = Describe("Provider", func() {
@@ -153,61 +157,137 @@ var _ = Describe("Provider", func() {
 	})
 
 	Describe("Bind", func() {
-		It("passes the correct parameters to the Aiven client", func() {
-			bindData := provider.BindData{
-				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				BindingID:  "D26EA3FB-AA78-451C-9ED0-233935ED388F",
+		const (
+			testInstanceID = "09E1993E-62E2-4040-ADF2-4D3EC741EFE6"
+			testBindingID  = "D26EA3FB-AA78-451C-9ED0-233935ED388F"
+			stubPassword   = "superdupersecret"
+		)
+		var (
+			testESServer    *ghttp.Server
+			testESHost      string
+			testESPort      string
+			versionResponse http.HandlerFunc
+			bindData        provider.BindData
+			bindCtx         context.Context
+			bindCancel      context.CancelFunc
+		)
+
+		BeforeEach(func() {
+			testESServer = ghttp.NewTLSServer()
+			http.DefaultClient = testESServer.HTTPTestServer.Client()
+			versionResponse = ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/"),
+				ghttp.VerifyBasicAuth(testBindingID, stubPassword),
+				ghttp.RespondWith(200, `{"version":{"number":"1.2.3"}}`),
+			)
+			testESServer.AppendHandlers(versionResponse)
+
+			esURL, err := url.Parse(testESServer.URL())
+			Expect(err).NotTo(HaveOccurred())
+			parts := strings.SplitN(esURL.Host, ":", 2)
+			Expect(parts).To(HaveLen(2))
+			testESHost, testESPort = parts[0], parts[1]
+
+			fakeAivenClient.CreateServiceUserReturnsOnCall(0, stubPassword, nil)
+			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, testESHost, testESPort, nil)
+
+			bindCtx, bindCancel = context.WithTimeout(context.Background(), 5*time.Second)
+			bindData = provider.BindData{
+				InstanceID: testInstanceID,
+				BindingID:  testBindingID,
 			}
+		})
 
-			fakeAivenClient.CreateServiceUserReturnsOnCall(0, "superdupersecret", nil)
-			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, "example.com", "23362", nil)
+		AfterEach(func() {
+			if testESServer != nil {
+				testESServer.Close()
+			}
+			bindCancel()
+		})
 
-			actualBinding, err := aivenProvider.Bind(context.Background(), bindData)
+		It("passes the correct parameters to the Aiven client", func() {
+			actualBinding, err := aivenProvider.Bind(bindCtx, bindData)
 			Expect(err).ToNot(HaveOccurred())
 
 			expectedCreateServiceUserParameters := &aiven.CreateServiceUserInput{
-				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-				Username:    bindData.BindingID,
+				ServiceName: "env-" + strings.ToLower(testInstanceID),
+				Username:    testBindingID,
 			}
 			Expect(fakeAivenClient.CreateServiceUserArgsForCall(0)).To(Equal(expectedCreateServiceUserParameters))
 
 			expectedGetServiceConnectionDetailsParameters := &aiven.GetServiceInput{
-				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
+				ServiceName: "env-" + strings.ToLower(testInstanceID),
 			}
 			Expect(fakeAivenClient.GetServiceConnectionDetailsArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
 
 			expectedBinding := brokerapi.Binding{
 				Credentials: provider.Credentials{
-					URI:      "https://D26EA3FB-AA78-451C-9ED0-233935ED388F:superdupersecret@example.com:23362",
-					Hostname: "example.com",
-					Port:     "23362",
-					Username: "D26EA3FB-AA78-451C-9ED0-233935ED388F",
-					Password: "superdupersecret",
+					URI:      fmt.Sprintf("https://%s:%s@%s:%s", testBindingID, stubPassword, testESHost, testESPort),
+					Hostname: testESHost,
+					Port:     testESPort,
+					Username: testBindingID,
+					Password: stubPassword,
 				},
 			}
 			Expect(actualBinding).To(Equal(expectedBinding))
 		})
 
 		It("errors if the client fails to create the service user", func() {
-			bindData := provider.BindData{
-				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				BindingID:  "D26EA3FB-AA78-451C-9ED0-233935ED388F",
-			}
 			fakeAivenClient.CreateServiceUserReturnsOnCall(0, "", errors.New("some-error"))
 
-			_, err := aivenProvider.Bind(context.Background(), bindData)
+			_, err := aivenProvider.Bind(bindCtx, bindData)
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("errors if the client fails to get the service", func() {
-			bindData := provider.BindData{
-				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				BindingID:  "D26EA3FB-AA78-451C-9ED0-233935ED388F",
-			}
 			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, "", "", errors.New("some-error"))
 
-			_, err := aivenProvider.Bind(context.Background(), bindData)
+			_, err := aivenProvider.Bind(bindCtx, bindData)
 			Expect(err).To(HaveOccurred())
+		})
+
+		Describe("polling ES until the credentials work", func() {
+			var (
+				unauthorizedResponse http.HandlerFunc
+			)
+
+			BeforeEach(func() {
+				unauthorizedResponse = ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/"),
+					ghttp.VerifyBasicAuth(testBindingID, stubPassword),
+					ghttp.RespondWith(401, `<html><body><h1>401 Unauthorized</h1>You need a valid user and password to access this content.</body></html>`),
+				)
+				// Replace the handler set above
+				testESServer.SetHandler(0, unauthorizedResponse)
+			})
+
+			It("retries calling the ES server if it gets a 401 initially", func() {
+				testESServer.AppendHandlers(versionResponse)
+				_, err := aivenProvider.Bind(bindCtx, bindData)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(fakeAivenClient.DeleteServiceUserCallCount()).To(Equal(0))
+			})
+
+			It("gives up polling and returns anyway after a timeout", func() {
+				testESServer.AppendHandlers(unauthorizedResponse)
+
+				ctx, cancel := context.WithTimeout(bindCtx, 900*time.Millisecond)
+				defer cancel()
+
+				_, err := aivenProvider.Bind(ctx, bindData)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns any other errors encountered while polling", func() {
+				testESServer.AppendHandlers(unauthorizedResponse)
+
+				ctx, cancel := context.WithCancel(bindCtx)
+				cancel() // cancelling to ensure a non-timeout error is triggered
+
+				_, err := aivenProvider.Bind(ctx, bindData)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 	})
 

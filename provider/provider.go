@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alphagov/paas-aiven-broker/client/elastic"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/pivotal-cf/brokerapi"
 )
@@ -79,9 +80,11 @@ type Credentials struct {
 }
 
 func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
+	serviceName := buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID)
 	user := bindData.BindingID
+
 	password, err := ap.Client.CreateServiceUser(&aiven.CreateServiceUserInput{
-		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
+		ServiceName: serviceName,
 		Username:    user,
 	})
 	if err != nil {
@@ -89,7 +92,7 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	}
 
 	host, port, err := ap.Client.GetServiceConnectionDetails(&aiven.GetServiceInput{
-		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID),
+		ServiceName: serviceName,
 	})
 	if err != nil {
 		return brokerapi.Binding{}, err
@@ -101,6 +104,15 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 		Port:     port,
 		Username: user,
 		Password: password,
+	}
+
+	err = ensureUserAvailability(ctx, credentials.URI)
+	if err != nil {
+		// Polling is only a best-effort attempt to work around Aiven API delays.
+		// We therefore continue anyway if it times out.
+		if err != context.DeadlineExceeded {
+			return brokerapi.Binding{}, err
+		}
 	}
 
 	return brokerapi.Binding{
@@ -115,6 +127,30 @@ func buildURI(user, password, host, port string) string {
 		Host:   fmt.Sprintf("%s:%s", host, port),
 	}
 	return uri.String()
+}
+
+func ensureUserAvailability(ctx context.Context, uri string) error {
+	client := elastic.New(uri, nil)
+	_, err := client.Version()
+	if err == nil {
+		// quick path
+		return nil
+	}
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			_, err = client.Version()
+			if err == nil {
+				return nil
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
 }
 
 func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err error) {

@@ -22,10 +22,7 @@ var _ = Describe("Elastic Client", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-		client, err = New("http://localhost:9200", nil)
-
-		Expect(err).NotTo(HaveOccurred())
+		client = New("http://localhost:9200", nil)
 	})
 
 	It("should create New() client", func() {
