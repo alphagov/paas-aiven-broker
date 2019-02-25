@@ -39,11 +39,6 @@ var _ = Describe("Broker", func() {
 				"id": "uuid-service",
 				"plan_updateable": true,
 				"plans": [{
-					"id": "uuid-basic-5",
-					"name": "basic-5",
-					"aiven_plan": "startup-4",
-					"elasticsearch_version": "5"
-				}, {
 					"id": "uuid-basic-6",
 					"name": "basic-6",
 					"aiven_plan": "startup-4",
@@ -102,7 +97,7 @@ var _ = Describe("Broker", func() {
 		By("Provisioning")
 		res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
 			ServiceID: "uuid-service",
-			PlanID:    "uuid-basic-5",
+			PlanID:    "uuid-basic-6",
 		}, ASYNC_ALLOWED)
 		Expect(res.Code).To(Equal(http.StatusAccepted))
 
@@ -115,7 +110,7 @@ var _ = Describe("Broker", func() {
 		By("Binding")
 		res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
 			ServiceID: "uuid-service",
-			PlanID:    "uuid-basic-5",
+			PlanID:    "uuid-basic-6",
 		})
 		Expect(res.Code).To(Equal(http.StatusCreated))
 
