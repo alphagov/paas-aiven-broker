@@ -325,6 +325,34 @@ var _ = Describe("Client", func() {
 			Expect(err).To(MatchError("Error deleting service user: 403 status code returned from Aiven: '{}'"))
 			Expect(actualResponse).To(Equal(""))
 		})
+
+		It("returns an error if an unexpected error message is returned", func() {
+			deleteServiceUserInput := &aiven.DeleteServiceUserInput{}
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.RespondWith(http.StatusForbidden, `{"message": "this error was not expected"}`),
+			))
+
+			actualResponse, err := aivenClient.DeleteServiceUser(deleteServiceUserInput)
+
+			Expect(err).To(MatchError(`Error deleting service user: 403 status code returned from Aiven: '{"message": "this error was not expected"}'`))
+			Expect(actualResponse).To(Equal(""))
+		})
+
+		It("succeeds if an error saying the user does not exist is returned", func() {
+			deleteServiceUserInput := &aiven.DeleteServiceUserInput{
+				ServiceName: "my-service",
+				Username:    "my-deleted-user",
+			}
+			response := `{"message": "Service user 'my-deleted-user' does not exist"}`
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.RespondWith(http.StatusForbidden, response),
+			))
+
+			actualResponse, err := aivenClient.DeleteServiceUser(deleteServiceUserInput)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actualResponse).To(Equal(response))
+		})
 	})
 
 	Describe("Update Service", func() {

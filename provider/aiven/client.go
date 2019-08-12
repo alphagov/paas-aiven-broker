@@ -252,8 +252,15 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 	if err != nil {
 		return "", err
 	}
+
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+		var errorResponse AivenErrorResponse
+		jsonErr := json.Unmarshal(b, &errorResponse)
+
+		expectedMessageIfUserWasAlreadyDeleted := fmt.Sprintf("Service user '%s' does not exist", params.Username)
+		if jsonErr != nil || errorResponse.Message != expectedMessageIfUserWasAlreadyDeleted {
+			return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+		}
 	}
 
 	return string(b), nil
