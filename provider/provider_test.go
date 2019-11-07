@@ -29,6 +29,14 @@ var _ = Describe("Provider", func() {
 	)
 
 	BeforeEach(func() {
+		planSpecificConfig1 := provider.PlanSpecificConfig{}
+		planSpecificConfig1.AivenPlan = "startup-1"
+		planSpecificConfig1.ElasticsearchVersion = "6"
+
+		planSpecificConfig2 := provider.PlanSpecificConfig{}
+		planSpecificConfig2.AivenPlan = "startup-2"
+		planSpecificConfig2.ElasticsearchVersion = "6"
+
 		config = &provider.Config{
 			Cloud:             "aws-eu-west-1",
 			ServiceNamePrefix: "env",
@@ -38,18 +46,18 @@ var _ = Describe("Provider", func() {
 						Service: brokerapi.Service{ID: "uuid-1"},
 						Plans: []provider.Plan{
 							{
-								ServicePlan: brokerapi.ServicePlan{ID: "uuid-2"},
-								PlanSpecificConfig: provider.PlanSpecificConfig{
-									AivenPlan:            "startup-1",
-									ElasticsearchVersion: "6",
+								ServicePlan: brokerapi.ServicePlan{
+									ID:   "uuid-2",
+									Name: "elasticsearch",
 								},
+								PlanSpecificConfig: planSpecificConfig1,
 							},
 							{
-								ServicePlan: brokerapi.ServicePlan{ID: "uuid-3"},
-								PlanSpecificConfig: provider.PlanSpecificConfig{
-									AivenPlan:            "startup-2",
-									ElasticsearchVersion: "6",
+								ServicePlan: brokerapi.ServicePlan{
+									ID:   "uuid-3",
+									Name: "elasticsearch",
 								},
+								PlanSpecificConfig: planSpecificConfig2,
 							},
 						},
 					},
@@ -67,7 +75,7 @@ var _ = Describe("Provider", func() {
 		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Service:    brokerapi.Service{ID: "uuid-1"},
+				Service:    brokerapi.Service{ID: "uuid-1", Name: "elasticsearch"},
 				Plan:       brokerapi.ServicePlan{ID: "uuid-2"},
 			}
 			It("includes ip whitelist", func() {
@@ -76,15 +84,16 @@ var _ = Describe("Provider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
+				userConfig := aiven.UserConfig{}
+				userConfig.ElasticsearchVersion = "6"
+				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
+
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       "aws-eu-west-1",
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
-					UserConfig: aiven.UserConfig{
-						ElasticsearchVersion: "6",
-						IPFilter:             []string{"1.2.3.4", "5.6.7.8"},
-					},
+					UserConfig:  userConfig,
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
@@ -95,15 +104,16 @@ var _ = Describe("Provider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
+				userConfig := aiven.UserConfig{}
+				userConfig.ElasticsearchVersion = "6"
+				userConfig.IPFilter = []string{}
+
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       "aws-eu-west-1",
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
-					UserConfig: aiven.UserConfig{
-						ElasticsearchVersion: "6",
-						IPFilter:             []string{},
-					},
+					UserConfig:  userConfig,
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 			})
@@ -336,13 +346,14 @@ var _ = Describe("Provider", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
+			userConfig := aiven.UserConfig{}
+			userConfig.ElasticsearchVersion = "6"
+			userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
+
 			expectedParameters := &aiven.UpdateServiceInput{
 				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Plan:        "startup-2",
-				UserConfig: aiven.UserConfig{
-					ElasticsearchVersion: "6",
-					IPFilter:             []string{"1.2.3.4", "5.6.7.8"},
-				},
+				UserConfig:  userConfig,
 			}
 			Expect(fakeAivenClient.UpdateServiceArgsForCall(0)).To(Equal(expectedParameters))
 		})

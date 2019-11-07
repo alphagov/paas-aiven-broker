@@ -30,15 +30,16 @@ var _ = Describe("Client", func() {
 
 	Describe("CreateService", func() {
 		It("should make a valid request", func() {
+			userConfig := aiven.UserConfig{}
+			userConfig.ElasticsearchVersion = "6"
+			userConfig.IPFilter = []string{"1.2.3.4"}
+
 			createServiceInput := &aiven.CreateServiceInput{
 				Cloud:       "cloud",
 				Plan:        "plan",
 				ServiceName: "name",
 				ServiceType: "type",
-				UserConfig: aiven.UserConfig{
-					ElasticsearchVersion: "6",
-					IPFilter:             []string{"1.2.3.4"},
-				},
+				UserConfig:  userConfig,
 			}
 			expectedBody, _ := json.Marshal(createServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
@@ -357,13 +358,14 @@ var _ = Describe("Client", func() {
 
 	Describe("Update Service", func() {
 		It("should make a valid request", func() {
+			userConfig := aiven.UserConfig{}
+			userConfig.ElasticsearchVersion = "6"
+			userConfig.IPFilter = []string{"1.2.3.4"}
+
 			updateServiceInput := &aiven.UpdateServiceInput{
 				ServiceName: "my-service",
 				Plan:        "new-plan",
-				UserConfig: aiven.UserConfig{
-					ElasticsearchVersion: "6",
-					IPFilter:             []string{"1.2.3.4"},
-				},
+				UserConfig:  userConfig,
 			}
 			expectedBody, _ := json.Marshal(updateServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(

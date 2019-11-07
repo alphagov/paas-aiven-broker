@@ -15,7 +15,6 @@ import (
 )
 
 const AIVEN_BASE_URL string = "https://api.aiven.io"
-const SERVICE_TYPE string = "elasticsearch"
 
 type AivenProvider struct {
 	Client aiven.Client
@@ -43,15 +42,27 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 	if err != nil {
 		return "", "", err
 	}
+
+	userConfig := aiven.UserConfig{}
+	userConfig.IPFilter = ipFilter
+
+	if provisionData.Service.Name == "elasticsearch" {
+		userConfig.ElasticsearchVersion = plan.ElasticsearchVersion
+	} else if provisionData.Service.Name == "influxdb" {
+		// Nothing to do
+	} else {
+		return "", "", fmt.Errorf(
+			"Cannot provision service for unknown service %s",
+			provisionData.Service.Name,
+		)
+	}
+
 	createServiceInput := &aiven.CreateServiceInput{
 		Cloud:       ap.Config.Cloud,
 		Plan:        plan.AivenPlan,
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, provisionData.InstanceID),
-		ServiceType: SERVICE_TYPE,
-		UserConfig: aiven.UserConfig{
-			ElasticsearchVersion: plan.ElasticsearchVersion,
-			IPFilter:             ipFilter,
-		},
+		ServiceType: provisionData.Service.Name,
+		UserConfig:  userConfig,
 	}
 	_, err = ap.Client.CreateService(createServiceInput)
 	return dashboardURL, operationData, err
@@ -172,13 +183,14 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 		return "", err
 	}
 
+	userConfig := aiven.UserConfig{}
+	userConfig.IPFilter = ipFilter
+	userConfig.ElasticsearchVersion = plan.ElasticsearchVersion // Pass empty version through if not InfluxDB
+
 	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, updateData.InstanceID),
 		Plan:        plan.AivenPlan,
-		UserConfig: aiven.UserConfig{
-			ElasticsearchVersion: plan.ElasticsearchVersion,
-			IPFilter:             ipFilter,
-		},
+		UserConfig:  userConfig,
 	})
 
 	switch err := err.(type) {
