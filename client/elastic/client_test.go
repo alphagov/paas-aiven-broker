@@ -89,7 +89,7 @@ var _ = Describe("Elastic Client", func() {
 			Expect(version).To(Equal("5.0.0"))
 		})
 
-		It("should fail to get Version() due to elasticearsh not providing one", func() {
+		It("should fail to get Version() due to elasticsearch not providing one", func() {
 			httpmock.RegisterResponder("GET", "http://localhost:9200",
 				httpmock.NewStringResponder(200, `{"version":{"number":""}}`))
 
