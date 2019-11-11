@@ -13,6 +13,7 @@ import (
 //go:generate counterfeiter -o fakes/fake_client.go . Client
 type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
+	GetService(params *GetServiceInput) (Service, error)
 	GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error)
 	GetServiceConnectionDetails(params *GetServiceInput) (string, string, error)
 	DeleteService(params *DeleteServiceInput) error
@@ -91,6 +92,7 @@ type Service struct {
 	State            ServiceStatus    `json:"state"`
 	UpdateTime       time.Time        `json:"update_time"`
 	ServiceUriParams ServiceUriParams `json:"service_uri_params"`
+	ServiceType      string           `json:"service_type"`
 }
 
 type ServiceStatus string
@@ -147,32 +149,21 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 }
 
 func (a *HttpClient) GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error) {
-	getServiceResponse, err := a.getService(params)
+	service, err := a.GetService(params)
 	if err != nil {
 		return "", time.Time{}, err
-	}
-
-	service := getServiceResponse.Service
-
-	if service.State == "" {
-		return "", time.Time{}, errors.New("Error getting service status: no state found in response JSON")
-	}
-
-	defaultTime := time.Time{}
-	if service.UpdateTime == defaultTime {
-		return "", time.Time{}, errors.New("Error getting service status: no update_time found in response JSON")
 	}
 
 	return service.State, service.UpdateTime, nil
 }
 
 func (a *HttpClient) GetServiceConnectionDetails(params *GetServiceInput) (string, string, error) {
-	getServiceResponse, err := a.getService(params)
+	service, err := a.GetService(params)
 	if err != nil {
 		return "", "", err
 	}
 
-	uriParams := getServiceResponse.Service.ServiceUriParams
+	uriParams := service.ServiceUriParams
 	host := uriParams.Host
 	port := uriParams.Port
 	if host == "" || port == "" {
@@ -261,7 +252,7 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 	return string(b), nil
 }
 
-func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, error) {
+func (a *HttpClient) GetService(params *GetServiceInput) (*Service, error) {
 	res, err := a.do("GET", fmt.Sprintf("/project/%s/service/%s", a.Project, params.ServiceName), nil)
 	if err != nil {
 		return nil, err
@@ -280,7 +271,23 @@ func (a *HttpClient) getService(params *GetServiceInput) (*GetServiceResponse, e
 	if err := json.NewDecoder(res.Body).Decode(getServiceResponse); err != nil {
 		return nil, err
 	}
-	return getServiceResponse, nil
+
+	service := getServiceResponse.Service
+
+	if service.ServiceType == "" {
+		return nil, errors.New("Error getting service: no service type found in response JSON")
+	}
+
+	if service.State == "" {
+		return nil, errors.New("Error getting service: no state found in response JSON")
+	}
+
+	defaultTime := time.Time{}
+	if service.UpdateTime == defaultTime {
+		return nil, errors.New("Error getting service: no update_time found in response JSON")
+	}
+
+	return &service, nil
 }
 
 func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {

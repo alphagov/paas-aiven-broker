@@ -69,8 +69,8 @@ var _ = Describe("Client", func() {
 		})
 	})
 
-	Describe("GetServiceStatus", func() {
-		It("should return the service state", func() {
+	Describe("GetService", func() {
+		It("should return the service", func() {
 			getServiceInput := &aiven.GetServiceInput{
 				ServiceName: "my-service",
 			}
@@ -81,15 +81,16 @@ var _ = Describe("Client", func() {
 				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
-				ghttp.RespondWith(http.StatusOK, fmt.Sprintf(`{"service": {"state": "RUNNING", "update_time": "%s"}}`, expectedUpdateTime)),
+				ghttp.RespondWith(http.StatusOK, fmt.Sprintf(`{"service": {"service_type": "pg", "state": "RUNNING", "update_time": "%s"}}`, expectedUpdateTime)),
 			))
 
-			actualState, updateTime, err := aivenClient.GetServiceStatus(getServiceInput)
+			service, err := aivenClient.GetService(getServiceInput)
 			parsedTime, _ := time.Parse(time.RFC3339Nano, expectedUpdateTime)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(actualState).To(Equal(aiven.Running))
-			Expect(updateTime).To(Equal(parsedTime))
+			Expect(service.State).To(BeEquivalentTo("RUNNING"))
+			Expect(service.ServiceType).To(Equal("pg"))
+			Expect(service.UpdateTime).To(Equal(parsedTime))
 		})
 
 		It("returns an error if the state is missing", func() {
@@ -101,13 +102,29 @@ var _ = Describe("Client", func() {
 				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
-				ghttp.RespondWith(http.StatusOK, `{"service": {"update_time": "2018-06-21T10:01:05.000040+00:00"}}`),
+				ghttp.RespondWith(http.StatusOK, `{"service": {"service_type": "pg", "update_time": "2018-06-21T10:01:05.000040+00:00"}}`),
 			))
 
-			actualState, _, err := aivenClient.GetServiceStatus(getServiceInput)
+			_, err := aivenClient.GetService(getServiceInput)
 
-			Expect(err).To(MatchError("Error getting service status: no state found in response JSON"))
-			Expect(actualState).To(Equal(aiven.ServiceStatus("")))
+			Expect(err).To(MatchError("Error getting service: no state found in response JSON"))
+		})
+
+		It("returns an error if the service type is missing", func() {
+			getServiceInput := &aiven.GetServiceInput{
+				ServiceName: "my-service",
+			}
+
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
+				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
+				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
+				ghttp.RespondWith(http.StatusOK, `{"service": {"state": "RUNNING", "update_time": "2018-06-21T10:01:05.000040+00:00"}}`),
+			))
+
+			_, err := aivenClient.GetService(getServiceInput)
+
+			Expect(err).To(MatchError("Error getting service: no service type found in response JSON"))
 		})
 
 		It("returns an error if the update time is missing", func() {
@@ -119,14 +136,12 @@ var _ = Describe("Client", func() {
 				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
-				ghttp.RespondWith(http.StatusOK, `{"service": {"state": "RUNNING"}}`),
+				ghttp.RespondWith(http.StatusOK, `{"service": {"service_type": "pg", "state": "RUNNING"}}`),
 			))
 
-			actualState, updateTime, err := aivenClient.GetServiceStatus(getServiceInput)
+			_, err := aivenClient.GetService(getServiceInput)
 
-			Expect(err).To(MatchError("Error getting service status: no update_time found in response JSON"))
-			Expect(actualState).To(Equal(aiven.ServiceStatus("")))
-			Expect(updateTime).To(Equal(time.Time{}))
+			Expect(err).To(MatchError("Error getting service: no update_time found in response JSON"))
 		})
 
 		It("returns an error if aiven 404s", func() {
@@ -141,15 +156,38 @@ var _ = Describe("Client", func() {
 				ghttp.RespondWith(http.StatusNotFound, "{}"),
 			))
 
-			actualState, _, err := aivenClient.GetServiceStatus(getServiceInput)
+			_, err := aivenClient.GetService(getServiceInput)
 
 			Expect(err).To(MatchError("Error getting service: 404 status code returned from Aiven: '{}'"))
-			Expect(actualState).To(Equal(aiven.ServiceStatus("")))
+		})
+	})
+
+	Describe("GetServiceStatus", func() {
+		It("should return the service state", func() {
+			getServiceInput := &aiven.GetServiceInput{
+				ServiceName: "my-service",
+			}
+
+			expectedUpdateTime := "2018-06-21T10:01:05.000040+00:00"
+
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
+				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
+				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
+				ghttp.RespondWith(http.StatusOK, fmt.Sprintf(`{"service": {"service_type": "pg", "state": "RUNNING", "update_time": "%s"}}`, expectedUpdateTime)),
+			))
+
+			actualState, updateTime, err := aivenClient.GetServiceStatus(getServiceInput)
+			parsedTime, _ := time.Parse(time.RFC3339Nano, expectedUpdateTime)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actualState).To(Equal(aiven.Running))
+			Expect(updateTime).To(Equal(parsedTime))
 		})
 	})
 
 	Describe("GetServiceConnectionDetails", func() {
-		It("should return the service state", func() {
+		It("should return the connection details", func() {
 			getServiceInput := &aiven.GetServiceInput{
 				ServiceName: "my-service",
 			}
@@ -158,7 +196,7 @@ var _ = Describe("Client", func() {
 				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
-				ghttp.RespondWith(http.StatusOK, `{"service": {"service_uri_params": {"host": "example.com", "port": "23362"}}}`),
+				ghttp.RespondWith(http.StatusOK, `{"service": {"service_type": "pg", "state": "RUNNING", "service_uri_params": {"host": "example.com", "port": "23362"}, "update_time": "2018-06-21T10:01:05.000040+00:00"}}`),
 			))
 
 			host, port, err := aivenClient.GetServiceConnectionDetails(getServiceInput)
@@ -177,7 +215,7 @@ var _ = Describe("Client", func() {
 				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
-				ghttp.RespondWith(http.StatusOK, `{"service": {"nonsense": "foo"}}`),
+				ghttp.RespondWith(http.StatusOK, `{"service": {"service_type": "pg", "state": "RUNNING", "update_time": "2018-06-21T10:01:05.000040+00:00"}}`),
 			))
 
 			host, port, err := aivenClient.GetServiceConnectionDetails(getServiceInput)
