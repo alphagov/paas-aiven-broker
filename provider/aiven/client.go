@@ -13,9 +13,7 @@ import (
 //go:generate counterfeiter -o fakes/fake_client.go . Client
 type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
-	GetService(params *GetServiceInput) (Service, error)
-	GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error)
-	GetServiceConnectionDetails(params *GetServiceInput) (string, string, error)
+	GetService(params *GetServiceInput) (*Service, error)
 	DeleteService(params *DeleteServiceInput) error
 	CreateServiceUser(params *CreateServiceUserInput) (string, error)
 	DeleteServiceUser(params *DeleteServiceUserInput) (string, error)
@@ -146,30 +144,6 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 	}
 
 	return string(b), nil
-}
-
-func (a *HttpClient) GetServiceStatus(params *GetServiceInput) (ServiceStatus, time.Time, error) {
-	service, err := a.GetService(params)
-	if err != nil {
-		return "", time.Time{}, err
-	}
-
-	return service.State, service.UpdateTime, nil
-}
-
-func (a *HttpClient) GetServiceConnectionDetails(params *GetServiceInput) (string, string, error) {
-	service, err := a.GetService(params)
-	if err != nil {
-		return "", "", err
-	}
-
-	uriParams := service.ServiceUriParams
-	host := uriParams.Host
-	port := uriParams.Port
-	if host == "" || port == "" {
-		return "", "", errors.New("Error getting service connection details: no connection details found in response JSON")
-	}
-	return host, port, nil
 }
 
 var ErrInstanceDoesNotExist = errors.New("Error deleting service: service instance does not exist")
