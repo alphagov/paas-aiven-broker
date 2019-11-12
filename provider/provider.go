@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -102,11 +103,21 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 		return brokerapi.Binding{}, err
 	}
 
-	host, port, err := ap.Client.GetServiceConnectionDetails(&aiven.GetServiceInput{
+	service, err := ap.Client.GetService(&aiven.GetServiceInput{
 		ServiceName: serviceName,
 	})
 	if err != nil {
 		return brokerapi.Binding{}, err
+	}
+
+	host := service.ServiceUriParams.Host
+	port := service.ServiceUriParams.Port
+	serviceType := service.ServiceType
+
+	if host == "" || port == "" {
+		return brokerapi.Binding{}, errors.New(
+			"Error getting service connection details: no connection details found in response JSON",
+		)
 	}
 
 	credentials := Credentials{
@@ -203,17 +214,27 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 	default:
 		return "", err
 	}
-
-	return "", nil
 }
 
-func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData LastOperationData) (state brokerapi.LastOperationState, description string, err error) {
-	status, updateTime, err := ap.Client.GetServiceStatus(&aiven.GetServiceInput{
-		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, lastOperationData.InstanceID),
+func (ap *AivenProvider) LastOperation(
+	ctx context.Context,
+	lastOperationData LastOperationData,
+) (state brokerapi.LastOperationState, description string, err error) {
+	serviceName := buildServiceName(
+		ap.Config.ServiceNamePrefix,
+		lastOperationData.InstanceID,
+	)
+
+	service, err := ap.Client.GetService(&aiven.GetServiceInput{
+		ServiceName: serviceName,
 	})
+
 	if err != nil {
 		return "", "", err
 	}
+
+	status := service.State
+	updateTime := service.UpdateTime
 
 	if updateTime.After(time.Now().Add(-1 * 60 * time.Second)) {
 		return brokerapi.InProgress, "Preparing to apply update", nil
