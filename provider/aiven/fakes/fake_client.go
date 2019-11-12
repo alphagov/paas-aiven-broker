@@ -3,16 +3,15 @@ package fakes
 
 import (
 	"sync"
-	"time"
 
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 )
 
 type FakeClient struct {
-	CreateServiceStub        func(params *aiven.CreateServiceInput) (string, error)
+	CreateServiceStub        func(*aiven.CreateServiceInput) (string, error)
 	createServiceMutex       sync.RWMutex
 	createServiceArgsForCall []struct {
-		params *aiven.CreateServiceInput
+		arg1 *aiven.CreateServiceInput
 	}
 	createServiceReturns struct {
 		result1 string
@@ -22,51 +21,10 @@ type FakeClient struct {
 		result1 string
 		result2 error
 	}
-	GetServiceStatusStub        func(params *aiven.GetServiceInput) (aiven.ServiceStatus, time.Time, error)
-	getServiceStatusMutex       sync.RWMutex
-	getServiceStatusArgsForCall []struct {
-		params *aiven.GetServiceInput
-	}
-	getServiceStatusReturns struct {
-		result1 aiven.ServiceStatus
-		result2 time.Time
-		result3 error
-	}
-	getServiceStatusReturnsOnCall map[int]struct {
-		result1 aiven.ServiceStatus
-		result2 time.Time
-		result3 error
-	}
-	GetServiceConnectionDetailsStub        func(params *aiven.GetServiceInput) (string, string, error)
-	getServiceConnectionDetailsMutex       sync.RWMutex
-	getServiceConnectionDetailsArgsForCall []struct {
-		params *aiven.GetServiceInput
-	}
-	getServiceConnectionDetailsReturns struct {
-		result1 string
-		result2 string
-		result3 error
-	}
-	getServiceConnectionDetailsReturnsOnCall map[int]struct {
-		result1 string
-		result2 string
-		result3 error
-	}
-	DeleteServiceStub        func(params *aiven.DeleteServiceInput) error
-	deleteServiceMutex       sync.RWMutex
-	deleteServiceArgsForCall []struct {
-		params *aiven.DeleteServiceInput
-	}
-	deleteServiceReturns struct {
-		result1 error
-	}
-	deleteServiceReturnsOnCall map[int]struct {
-		result1 error
-	}
-	CreateServiceUserStub        func(params *aiven.CreateServiceUserInput) (string, error)
+	CreateServiceUserStub        func(*aiven.CreateServiceUserInput) (string, error)
 	createServiceUserMutex       sync.RWMutex
 	createServiceUserArgsForCall []struct {
-		params *aiven.CreateServiceUserInput
+		arg1 *aiven.CreateServiceUserInput
 	}
 	createServiceUserReturns struct {
 		result1 string
@@ -76,10 +34,21 @@ type FakeClient struct {
 		result1 string
 		result2 error
 	}
-	DeleteServiceUserStub        func(params *aiven.DeleteServiceUserInput) (string, error)
+	DeleteServiceStub        func(*aiven.DeleteServiceInput) error
+	deleteServiceMutex       sync.RWMutex
+	deleteServiceArgsForCall []struct {
+		arg1 *aiven.DeleteServiceInput
+	}
+	deleteServiceReturns struct {
+		result1 error
+	}
+	deleteServiceReturnsOnCall map[int]struct {
+		result1 error
+	}
+	DeleteServiceUserStub        func(*aiven.DeleteServiceUserInput) (string, error)
 	deleteServiceUserMutex       sync.RWMutex
 	deleteServiceUserArgsForCall []struct {
-		params *aiven.DeleteServiceUserInput
+		arg1 *aiven.DeleteServiceUserInput
 	}
 	deleteServiceUserReturns struct {
 		result1 string
@@ -89,10 +58,23 @@ type FakeClient struct {
 		result1 string
 		result2 error
 	}
-	UpdateServiceStub        func(params *aiven.UpdateServiceInput) (string, error)
+	GetServiceStub        func(*aiven.GetServiceInput) (*aiven.Service, error)
+	getServiceMutex       sync.RWMutex
+	getServiceArgsForCall []struct {
+		arg1 *aiven.GetServiceInput
+	}
+	getServiceReturns struct {
+		result1 *aiven.Service
+		result2 error
+	}
+	getServiceReturnsOnCall map[int]struct {
+		result1 *aiven.Service
+		result2 error
+	}
+	UpdateServiceStub        func(*aiven.UpdateServiceInput) (string, error)
 	updateServiceMutex       sync.RWMutex
 	updateServiceArgsForCall []struct {
-		params *aiven.UpdateServiceInput
+		arg1 *aiven.UpdateServiceInput
 	}
 	updateServiceReturns struct {
 		result1 string
@@ -106,21 +88,22 @@ type FakeClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClient) CreateService(params *aiven.CreateServiceInput) (string, error) {
+func (fake *FakeClient) CreateService(arg1 *aiven.CreateServiceInput) (string, error) {
 	fake.createServiceMutex.Lock()
 	ret, specificReturn := fake.createServiceReturnsOnCall[len(fake.createServiceArgsForCall)]
 	fake.createServiceArgsForCall = append(fake.createServiceArgsForCall, struct {
-		params *aiven.CreateServiceInput
-	}{params})
-	fake.recordInvocation("CreateService", []interface{}{params})
+		arg1 *aiven.CreateServiceInput
+	}{arg1})
+	fake.recordInvocation("CreateService", []interface{}{arg1})
 	fake.createServiceMutex.Unlock()
 	if fake.CreateServiceStub != nil {
-		return fake.CreateServiceStub(params)
+		return fake.CreateServiceStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.createServiceReturns.result1, fake.createServiceReturns.result2
+	fakeReturns := fake.createServiceReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeClient) CreateServiceCallCount() int {
@@ -129,13 +112,22 @@ func (fake *FakeClient) CreateServiceCallCount() int {
 	return len(fake.createServiceArgsForCall)
 }
 
+func (fake *FakeClient) CreateServiceCalls(stub func(*aiven.CreateServiceInput) (string, error)) {
+	fake.createServiceMutex.Lock()
+	defer fake.createServiceMutex.Unlock()
+	fake.CreateServiceStub = stub
+}
+
 func (fake *FakeClient) CreateServiceArgsForCall(i int) *aiven.CreateServiceInput {
 	fake.createServiceMutex.RLock()
 	defer fake.createServiceMutex.RUnlock()
-	return fake.createServiceArgsForCall[i].params
+	argsForCall := fake.createServiceArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeClient) CreateServiceReturns(result1 string, result2 error) {
+	fake.createServiceMutex.Lock()
+	defer fake.createServiceMutex.Unlock()
 	fake.CreateServiceStub = nil
 	fake.createServiceReturns = struct {
 		result1 string
@@ -144,6 +136,8 @@ func (fake *FakeClient) CreateServiceReturns(result1 string, result2 error) {
 }
 
 func (fake *FakeClient) CreateServiceReturnsOnCall(i int, result1 string, result2 error) {
+	fake.createServiceMutex.Lock()
+	defer fake.createServiceMutex.Unlock()
 	fake.CreateServiceStub = nil
 	if fake.createServiceReturnsOnCall == nil {
 		fake.createServiceReturnsOnCall = make(map[int]struct {
@@ -157,177 +151,22 @@ func (fake *FakeClient) CreateServiceReturnsOnCall(i int, result1 string, result
 	}{result1, result2}
 }
 
-func (fake *FakeClient) GetServiceStatus(params *aiven.GetServiceInput) (aiven.ServiceStatus, time.Time, error) {
-	fake.getServiceStatusMutex.Lock()
-	ret, specificReturn := fake.getServiceStatusReturnsOnCall[len(fake.getServiceStatusArgsForCall)]
-	fake.getServiceStatusArgsForCall = append(fake.getServiceStatusArgsForCall, struct {
-		params *aiven.GetServiceInput
-	}{params})
-	fake.recordInvocation("GetServiceStatus", []interface{}{params})
-	fake.getServiceStatusMutex.Unlock()
-	if fake.GetServiceStatusStub != nil {
-		return fake.GetServiceStatusStub(params)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
-	}
-	return fake.getServiceStatusReturns.result1, fake.getServiceStatusReturns.result2, fake.getServiceStatusReturns.result3
-}
-
-func (fake *FakeClient) GetServiceStatusCallCount() int {
-	fake.getServiceStatusMutex.RLock()
-	defer fake.getServiceStatusMutex.RUnlock()
-	return len(fake.getServiceStatusArgsForCall)
-}
-
-func (fake *FakeClient) GetServiceStatusArgsForCall(i int) *aiven.GetServiceInput {
-	fake.getServiceStatusMutex.RLock()
-	defer fake.getServiceStatusMutex.RUnlock()
-	return fake.getServiceStatusArgsForCall[i].params
-}
-
-func (fake *FakeClient) GetServiceStatusReturns(result1 aiven.ServiceStatus, result2 time.Time, result3 error) {
-	fake.GetServiceStatusStub = nil
-	fake.getServiceStatusReturns = struct {
-		result1 aiven.ServiceStatus
-		result2 time.Time
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeClient) GetServiceStatusReturnsOnCall(i int, result1 aiven.ServiceStatus, result2 time.Time, result3 error) {
-	fake.GetServiceStatusStub = nil
-	if fake.getServiceStatusReturnsOnCall == nil {
-		fake.getServiceStatusReturnsOnCall = make(map[int]struct {
-			result1 aiven.ServiceStatus
-			result2 time.Time
-			result3 error
-		})
-	}
-	fake.getServiceStatusReturnsOnCall[i] = struct {
-		result1 aiven.ServiceStatus
-		result2 time.Time
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeClient) GetServiceConnectionDetails(params *aiven.GetServiceInput) (string, string, error) {
-	fake.getServiceConnectionDetailsMutex.Lock()
-	ret, specificReturn := fake.getServiceConnectionDetailsReturnsOnCall[len(fake.getServiceConnectionDetailsArgsForCall)]
-	fake.getServiceConnectionDetailsArgsForCall = append(fake.getServiceConnectionDetailsArgsForCall, struct {
-		params *aiven.GetServiceInput
-	}{params})
-	fake.recordInvocation("GetServiceConnectionDetails", []interface{}{params})
-	fake.getServiceConnectionDetailsMutex.Unlock()
-	if fake.GetServiceConnectionDetailsStub != nil {
-		return fake.GetServiceConnectionDetailsStub(params)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
-	}
-	return fake.getServiceConnectionDetailsReturns.result1, fake.getServiceConnectionDetailsReturns.result2, fake.getServiceConnectionDetailsReturns.result3
-}
-
-func (fake *FakeClient) GetServiceConnectionDetailsCallCount() int {
-	fake.getServiceConnectionDetailsMutex.RLock()
-	defer fake.getServiceConnectionDetailsMutex.RUnlock()
-	return len(fake.getServiceConnectionDetailsArgsForCall)
-}
-
-func (fake *FakeClient) GetServiceConnectionDetailsArgsForCall(i int) *aiven.GetServiceInput {
-	fake.getServiceConnectionDetailsMutex.RLock()
-	defer fake.getServiceConnectionDetailsMutex.RUnlock()
-	return fake.getServiceConnectionDetailsArgsForCall[i].params
-}
-
-func (fake *FakeClient) GetServiceConnectionDetailsReturns(result1 string, result2 string, result3 error) {
-	fake.GetServiceConnectionDetailsStub = nil
-	fake.getServiceConnectionDetailsReturns = struct {
-		result1 string
-		result2 string
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeClient) GetServiceConnectionDetailsReturnsOnCall(i int, result1 string, result2 string, result3 error) {
-	fake.GetServiceConnectionDetailsStub = nil
-	if fake.getServiceConnectionDetailsReturnsOnCall == nil {
-		fake.getServiceConnectionDetailsReturnsOnCall = make(map[int]struct {
-			result1 string
-			result2 string
-			result3 error
-		})
-	}
-	fake.getServiceConnectionDetailsReturnsOnCall[i] = struct {
-		result1 string
-		result2 string
-		result3 error
-	}{result1, result2, result3}
-}
-
-func (fake *FakeClient) DeleteService(params *aiven.DeleteServiceInput) error {
-	fake.deleteServiceMutex.Lock()
-	ret, specificReturn := fake.deleteServiceReturnsOnCall[len(fake.deleteServiceArgsForCall)]
-	fake.deleteServiceArgsForCall = append(fake.deleteServiceArgsForCall, struct {
-		params *aiven.DeleteServiceInput
-	}{params})
-	fake.recordInvocation("DeleteService", []interface{}{params})
-	fake.deleteServiceMutex.Unlock()
-	if fake.DeleteServiceStub != nil {
-		return fake.DeleteServiceStub(params)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fake.deleteServiceReturns.result1
-}
-
-func (fake *FakeClient) DeleteServiceCallCount() int {
-	fake.deleteServiceMutex.RLock()
-	defer fake.deleteServiceMutex.RUnlock()
-	return len(fake.deleteServiceArgsForCall)
-}
-
-func (fake *FakeClient) DeleteServiceArgsForCall(i int) *aiven.DeleteServiceInput {
-	fake.deleteServiceMutex.RLock()
-	defer fake.deleteServiceMutex.RUnlock()
-	return fake.deleteServiceArgsForCall[i].params
-}
-
-func (fake *FakeClient) DeleteServiceReturns(result1 error) {
-	fake.DeleteServiceStub = nil
-	fake.deleteServiceReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeClient) DeleteServiceReturnsOnCall(i int, result1 error) {
-	fake.DeleteServiceStub = nil
-	if fake.deleteServiceReturnsOnCall == nil {
-		fake.deleteServiceReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.deleteServiceReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeClient) CreateServiceUser(params *aiven.CreateServiceUserInput) (string, error) {
+func (fake *FakeClient) CreateServiceUser(arg1 *aiven.CreateServiceUserInput) (string, error) {
 	fake.createServiceUserMutex.Lock()
 	ret, specificReturn := fake.createServiceUserReturnsOnCall[len(fake.createServiceUserArgsForCall)]
 	fake.createServiceUserArgsForCall = append(fake.createServiceUserArgsForCall, struct {
-		params *aiven.CreateServiceUserInput
-	}{params})
-	fake.recordInvocation("CreateServiceUser", []interface{}{params})
+		arg1 *aiven.CreateServiceUserInput
+	}{arg1})
+	fake.recordInvocation("CreateServiceUser", []interface{}{arg1})
 	fake.createServiceUserMutex.Unlock()
 	if fake.CreateServiceUserStub != nil {
-		return fake.CreateServiceUserStub(params)
+		return fake.CreateServiceUserStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.createServiceUserReturns.result1, fake.createServiceUserReturns.result2
+	fakeReturns := fake.createServiceUserReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeClient) CreateServiceUserCallCount() int {
@@ -336,13 +175,22 @@ func (fake *FakeClient) CreateServiceUserCallCount() int {
 	return len(fake.createServiceUserArgsForCall)
 }
 
+func (fake *FakeClient) CreateServiceUserCalls(stub func(*aiven.CreateServiceUserInput) (string, error)) {
+	fake.createServiceUserMutex.Lock()
+	defer fake.createServiceUserMutex.Unlock()
+	fake.CreateServiceUserStub = stub
+}
+
 func (fake *FakeClient) CreateServiceUserArgsForCall(i int) *aiven.CreateServiceUserInput {
 	fake.createServiceUserMutex.RLock()
 	defer fake.createServiceUserMutex.RUnlock()
-	return fake.createServiceUserArgsForCall[i].params
+	argsForCall := fake.createServiceUserArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeClient) CreateServiceUserReturns(result1 string, result2 error) {
+	fake.createServiceUserMutex.Lock()
+	defer fake.createServiceUserMutex.Unlock()
 	fake.CreateServiceUserStub = nil
 	fake.createServiceUserReturns = struct {
 		result1 string
@@ -351,6 +199,8 @@ func (fake *FakeClient) CreateServiceUserReturns(result1 string, result2 error) 
 }
 
 func (fake *FakeClient) CreateServiceUserReturnsOnCall(i int, result1 string, result2 error) {
+	fake.createServiceUserMutex.Lock()
+	defer fake.createServiceUserMutex.Unlock()
 	fake.CreateServiceUserStub = nil
 	if fake.createServiceUserReturnsOnCall == nil {
 		fake.createServiceUserReturnsOnCall = make(map[int]struct {
@@ -364,21 +214,82 @@ func (fake *FakeClient) CreateServiceUserReturnsOnCall(i int, result1 string, re
 	}{result1, result2}
 }
 
-func (fake *FakeClient) DeleteServiceUser(params *aiven.DeleteServiceUserInput) (string, error) {
+func (fake *FakeClient) DeleteService(arg1 *aiven.DeleteServiceInput) error {
+	fake.deleteServiceMutex.Lock()
+	ret, specificReturn := fake.deleteServiceReturnsOnCall[len(fake.deleteServiceArgsForCall)]
+	fake.deleteServiceArgsForCall = append(fake.deleteServiceArgsForCall, struct {
+		arg1 *aiven.DeleteServiceInput
+	}{arg1})
+	fake.recordInvocation("DeleteService", []interface{}{arg1})
+	fake.deleteServiceMutex.Unlock()
+	if fake.DeleteServiceStub != nil {
+		return fake.DeleteServiceStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteServiceReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeClient) DeleteServiceCallCount() int {
+	fake.deleteServiceMutex.RLock()
+	defer fake.deleteServiceMutex.RUnlock()
+	return len(fake.deleteServiceArgsForCall)
+}
+
+func (fake *FakeClient) DeleteServiceCalls(stub func(*aiven.DeleteServiceInput) error) {
+	fake.deleteServiceMutex.Lock()
+	defer fake.deleteServiceMutex.Unlock()
+	fake.DeleteServiceStub = stub
+}
+
+func (fake *FakeClient) DeleteServiceArgsForCall(i int) *aiven.DeleteServiceInput {
+	fake.deleteServiceMutex.RLock()
+	defer fake.deleteServiceMutex.RUnlock()
+	argsForCall := fake.deleteServiceArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeClient) DeleteServiceReturns(result1 error) {
+	fake.deleteServiceMutex.Lock()
+	defer fake.deleteServiceMutex.Unlock()
+	fake.DeleteServiceStub = nil
+	fake.deleteServiceReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeClient) DeleteServiceReturnsOnCall(i int, result1 error) {
+	fake.deleteServiceMutex.Lock()
+	defer fake.deleteServiceMutex.Unlock()
+	fake.DeleteServiceStub = nil
+	if fake.deleteServiceReturnsOnCall == nil {
+		fake.deleteServiceReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteServiceReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeClient) DeleteServiceUser(arg1 *aiven.DeleteServiceUserInput) (string, error) {
 	fake.deleteServiceUserMutex.Lock()
 	ret, specificReturn := fake.deleteServiceUserReturnsOnCall[len(fake.deleteServiceUserArgsForCall)]
 	fake.deleteServiceUserArgsForCall = append(fake.deleteServiceUserArgsForCall, struct {
-		params *aiven.DeleteServiceUserInput
-	}{params})
-	fake.recordInvocation("DeleteServiceUser", []interface{}{params})
+		arg1 *aiven.DeleteServiceUserInput
+	}{arg1})
+	fake.recordInvocation("DeleteServiceUser", []interface{}{arg1})
 	fake.deleteServiceUserMutex.Unlock()
 	if fake.DeleteServiceUserStub != nil {
-		return fake.DeleteServiceUserStub(params)
+		return fake.DeleteServiceUserStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.deleteServiceUserReturns.result1, fake.deleteServiceUserReturns.result2
+	fakeReturns := fake.deleteServiceUserReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeClient) DeleteServiceUserCallCount() int {
@@ -387,13 +298,22 @@ func (fake *FakeClient) DeleteServiceUserCallCount() int {
 	return len(fake.deleteServiceUserArgsForCall)
 }
 
+func (fake *FakeClient) DeleteServiceUserCalls(stub func(*aiven.DeleteServiceUserInput) (string, error)) {
+	fake.deleteServiceUserMutex.Lock()
+	defer fake.deleteServiceUserMutex.Unlock()
+	fake.DeleteServiceUserStub = stub
+}
+
 func (fake *FakeClient) DeleteServiceUserArgsForCall(i int) *aiven.DeleteServiceUserInput {
 	fake.deleteServiceUserMutex.RLock()
 	defer fake.deleteServiceUserMutex.RUnlock()
-	return fake.deleteServiceUserArgsForCall[i].params
+	argsForCall := fake.deleteServiceUserArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeClient) DeleteServiceUserReturns(result1 string, result2 error) {
+	fake.deleteServiceUserMutex.Lock()
+	defer fake.deleteServiceUserMutex.Unlock()
 	fake.DeleteServiceUserStub = nil
 	fake.deleteServiceUserReturns = struct {
 		result1 string
@@ -402,6 +322,8 @@ func (fake *FakeClient) DeleteServiceUserReturns(result1 string, result2 error) 
 }
 
 func (fake *FakeClient) DeleteServiceUserReturnsOnCall(i int, result1 string, result2 error) {
+	fake.deleteServiceUserMutex.Lock()
+	defer fake.deleteServiceUserMutex.Unlock()
 	fake.DeleteServiceUserStub = nil
 	if fake.deleteServiceUserReturnsOnCall == nil {
 		fake.deleteServiceUserReturnsOnCall = make(map[int]struct {
@@ -415,21 +337,85 @@ func (fake *FakeClient) DeleteServiceUserReturnsOnCall(i int, result1 string, re
 	}{result1, result2}
 }
 
-func (fake *FakeClient) UpdateService(params *aiven.UpdateServiceInput) (string, error) {
-	fake.updateServiceMutex.Lock()
-	ret, specificReturn := fake.updateServiceReturnsOnCall[len(fake.updateServiceArgsForCall)]
-	fake.updateServiceArgsForCall = append(fake.updateServiceArgsForCall, struct {
-		params *aiven.UpdateServiceInput
-	}{params})
-	fake.recordInvocation("UpdateService", []interface{}{params})
-	fake.updateServiceMutex.Unlock()
-	if fake.UpdateServiceStub != nil {
-		return fake.UpdateServiceStub(params)
+func (fake *FakeClient) GetService(arg1 *aiven.GetServiceInput) (*aiven.Service, error) {
+	fake.getServiceMutex.Lock()
+	ret, specificReturn := fake.getServiceReturnsOnCall[len(fake.getServiceArgsForCall)]
+	fake.getServiceArgsForCall = append(fake.getServiceArgsForCall, struct {
+		arg1 *aiven.GetServiceInput
+	}{arg1})
+	fake.recordInvocation("GetService", []interface{}{arg1})
+	fake.getServiceMutex.Unlock()
+	if fake.GetServiceStub != nil {
+		return fake.GetServiceStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.updateServiceReturns.result1, fake.updateServiceReturns.result2
+	fakeReturns := fake.getServiceReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeClient) GetServiceCallCount() int {
+	fake.getServiceMutex.RLock()
+	defer fake.getServiceMutex.RUnlock()
+	return len(fake.getServiceArgsForCall)
+}
+
+func (fake *FakeClient) GetServiceCalls(stub func(*aiven.GetServiceInput) (*aiven.Service, error)) {
+	fake.getServiceMutex.Lock()
+	defer fake.getServiceMutex.Unlock()
+	fake.GetServiceStub = stub
+}
+
+func (fake *FakeClient) GetServiceArgsForCall(i int) *aiven.GetServiceInput {
+	fake.getServiceMutex.RLock()
+	defer fake.getServiceMutex.RUnlock()
+	argsForCall := fake.getServiceArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeClient) GetServiceReturns(result1 *aiven.Service, result2 error) {
+	fake.getServiceMutex.Lock()
+	defer fake.getServiceMutex.Unlock()
+	fake.GetServiceStub = nil
+	fake.getServiceReturns = struct {
+		result1 *aiven.Service
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetServiceReturnsOnCall(i int, result1 *aiven.Service, result2 error) {
+	fake.getServiceMutex.Lock()
+	defer fake.getServiceMutex.Unlock()
+	fake.GetServiceStub = nil
+	if fake.getServiceReturnsOnCall == nil {
+		fake.getServiceReturnsOnCall = make(map[int]struct {
+			result1 *aiven.Service
+			result2 error
+		})
+	}
+	fake.getServiceReturnsOnCall[i] = struct {
+		result1 *aiven.Service
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) UpdateService(arg1 *aiven.UpdateServiceInput) (string, error) {
+	fake.updateServiceMutex.Lock()
+	ret, specificReturn := fake.updateServiceReturnsOnCall[len(fake.updateServiceArgsForCall)]
+	fake.updateServiceArgsForCall = append(fake.updateServiceArgsForCall, struct {
+		arg1 *aiven.UpdateServiceInput
+	}{arg1})
+	fake.recordInvocation("UpdateService", []interface{}{arg1})
+	fake.updateServiceMutex.Unlock()
+	if fake.UpdateServiceStub != nil {
+		return fake.UpdateServiceStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.updateServiceReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeClient) UpdateServiceCallCount() int {
@@ -438,13 +424,22 @@ func (fake *FakeClient) UpdateServiceCallCount() int {
 	return len(fake.updateServiceArgsForCall)
 }
 
+func (fake *FakeClient) UpdateServiceCalls(stub func(*aiven.UpdateServiceInput) (string, error)) {
+	fake.updateServiceMutex.Lock()
+	defer fake.updateServiceMutex.Unlock()
+	fake.UpdateServiceStub = stub
+}
+
 func (fake *FakeClient) UpdateServiceArgsForCall(i int) *aiven.UpdateServiceInput {
 	fake.updateServiceMutex.RLock()
 	defer fake.updateServiceMutex.RUnlock()
-	return fake.updateServiceArgsForCall[i].params
+	argsForCall := fake.updateServiceArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeClient) UpdateServiceReturns(result1 string, result2 error) {
+	fake.updateServiceMutex.Lock()
+	defer fake.updateServiceMutex.Unlock()
 	fake.UpdateServiceStub = nil
 	fake.updateServiceReturns = struct {
 		result1 string
@@ -453,6 +448,8 @@ func (fake *FakeClient) UpdateServiceReturns(result1 string, result2 error) {
 }
 
 func (fake *FakeClient) UpdateServiceReturnsOnCall(i int, result1 string, result2 error) {
+	fake.updateServiceMutex.Lock()
+	defer fake.updateServiceMutex.Unlock()
 	fake.UpdateServiceStub = nil
 	if fake.updateServiceReturnsOnCall == nil {
 		fake.updateServiceReturnsOnCall = make(map[int]struct {
@@ -471,16 +468,14 @@ func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.createServiceMutex.RLock()
 	defer fake.createServiceMutex.RUnlock()
-	fake.getServiceStatusMutex.RLock()
-	defer fake.getServiceStatusMutex.RUnlock()
-	fake.getServiceConnectionDetailsMutex.RLock()
-	defer fake.getServiceConnectionDetailsMutex.RUnlock()
-	fake.deleteServiceMutex.RLock()
-	defer fake.deleteServiceMutex.RUnlock()
 	fake.createServiceUserMutex.RLock()
 	defer fake.createServiceUserMutex.RUnlock()
+	fake.deleteServiceMutex.RLock()
+	defer fake.deleteServiceMutex.RUnlock()
 	fake.deleteServiceUserMutex.RLock()
 	defer fake.deleteServiceUserMutex.RUnlock()
+	fake.getServiceMutex.RLock()
+	defer fake.getServiceMutex.RUnlock()
 	fake.updateServiceMutex.RLock()
 	defer fake.updateServiceMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
