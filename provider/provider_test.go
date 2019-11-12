@@ -199,7 +199,13 @@ var _ = Describe("Provider", func() {
 			testESHost, testESPort = parts[0], parts[1]
 
 			fakeAivenClient.CreateServiceUserReturnsOnCall(0, stubPassword, nil)
-			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, testESHost, testESPort, nil)
+			fakeAivenClient.GetServiceReturnsOnCall(0, &aiven.Service{
+				ServiceUriParams: aiven.ServiceUriParams{
+					Host: testESHost,
+					Port: testESPort,
+				},
+				ServiceType: "elasticsearch",
+			}, nil)
 
 			bindCtx, bindCancel = context.WithTimeout(context.Background(), 5*time.Second)
 			bindData = provider.BindData{
@@ -228,7 +234,7 @@ var _ = Describe("Provider", func() {
 			expectedGetServiceConnectionDetailsParameters := &aiven.GetServiceInput{
 				ServiceName: "env-" + strings.ToLower(testInstanceID),
 			}
-			Expect(fakeAivenClient.GetServiceConnectionDetailsArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
+			Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
 
 			expectedBinding := brokerapi.Binding{
 				Credentials: provider.Credentials{
@@ -250,7 +256,7 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("errors if the client fails to get the service", func() {
-			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, "", "", errors.New("some-error"))
+			fakeAivenClient.GetServiceReturnsOnCall(0, nil, errors.New("some-error"))
 
 			_, err := aivenProvider.Bind(bindCtx, bindData)
 			Expect(err).To(HaveOccurred())
@@ -410,12 +416,14 @@ var _ = Describe("Provider", func() {
 			}
 
 			twoMinutesAgo := time.Now().Add(-1 * 2 * time.Minute)
-			fakeAivenClient.GetServiceStatusReturnsOnCall(0, aiven.Running, twoMinutesAgo, nil)
+			fakeAivenClient.GetServiceReturnsOnCall(0, &aiven.Service{
+				State: aiven.Running, UpdateTime: twoMinutesAgo,
+			}, nil)
 			actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(fakeAivenClient.GetServiceStatusArgsForCall(0)).To(Equal(expectedGetServiceStatusParameters))
+			Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceStatusParameters))
 			Expect(actualLastOperationState).To(Equal(brokerapi.Succeeded))
 			Expect(description).To(Equal("Last operation succeeded"))
 		})
@@ -436,11 +444,13 @@ var _ = Describe("Provider", func() {
 				}
 
 				thirtySecondsAgo := time.Now().Add(-1 * 30 * time.Second)
-				fakeAivenClient.GetServiceStatusReturnsOnCall(0, aiven.Running, thirtySecondsAgo, nil)
+				fakeAivenClient.GetServiceReturnsOnCall(0, &aiven.Service{
+					State: aiven.Running, UpdateTime: thirtySecondsAgo,
+				}, nil)
 				actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(fakeAivenClient.GetServiceStatusArgsForCall(0)).To(Equal(expectedGetServiceParameters))
+				Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceParameters))
 
 				Expect(actualLastOperationState).To(Equal(brokerapi.InProgress))
 				Expect(description).To(Equal("Preparing to apply update"))
@@ -452,8 +462,7 @@ var _ = Describe("Provider", func() {
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 			}
 
-			twoMinutesAgo := time.Now().Add(-1 * 2 * time.Minute)
-			fakeAivenClient.GetServiceStatusReturnsOnCall(0, aiven.Running, twoMinutesAgo, errors.New("some-error"))
+			fakeAivenClient.GetServiceReturnsOnCall(0, nil, errors.New("some-error"))
 
 			actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 
