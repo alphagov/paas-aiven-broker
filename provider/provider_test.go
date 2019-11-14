@@ -236,15 +236,19 @@ var _ = Describe("Provider", func() {
 			}
 			Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
 
-			expectedBinding := brokerapi.Binding{
-				Credentials: provider.Credentials{
-					URI:      fmt.Sprintf("https://%s:%s@%s:%s", testBindingID, stubPassword, testESHost, testESPort),
-					Hostname: testESHost,
-					Port:     testESPort,
-					Username: testBindingID,
-					Password: stubPassword,
-				},
-			}
+			expectedCreds := provider.Credentials{}
+
+			expectedCreds.URI = fmt.Sprintf(
+				"https://%s:%s@%s:%s",
+				testBindingID, stubPassword, testESHost, testESPort,
+			)
+			expectedCreds.Hostname = testESHost
+			expectedCreds.Port = testESPort
+			expectedCreds.Username = testBindingID
+			expectedCreds.Password = stubPassword
+
+			expectedBinding := brokerapi.Binding{Credentials: expectedCreds}
+
 			Expect(actualBinding).To(Equal(expectedBinding))
 		})
 

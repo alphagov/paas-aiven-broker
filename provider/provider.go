@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -84,14 +83,6 @@ func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData Deprov
 	return "", err
 }
 
-type Credentials struct {
-	URI      string `json:"uri"`
-	Hostname string `json:"hostname"`
-	Port     string `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
 	serviceName := buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID)
 	user := bindData.BindingID
@@ -121,12 +112,9 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 		)
 	}
 
-	credentials := Credentials{
-		URI:      buildURI(user, password, host, port),
-		Hostname: host,
-		Port:     port,
-		Username: user,
-		Password: password,
+	credentials, err := BuildCredentials(serviceType, user, password, host, port)
+	if err != nil {
+		return brokerapi.Binding{}, err
 	}
 
 	if err = ensureUserAvailability(ctx, serviceType, credentials); err != nil {
@@ -140,15 +128,6 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	return brokerapi.Binding{
 		Credentials: credentials,
 	}, nil
-}
-
-func buildURI(user, password, host, port string) string {
-	uri := &url.URL{
-		Scheme: "https",
-		User:   url.UserPassword(user, password),
-		Host:   fmt.Sprintf("%s:%s", host, port),
-	}
-	return uri.String()
 }
 
 func ensureUserAvailability(
