@@ -27,11 +27,24 @@ var _ = Describe("Config", func() {
 											"aiven_plan": "startup-1",
 											"elasticsearch_version": "6"
 										}]
+									},
+									{
+										"name": "influxdb",
+										"plans": [{
+											"aiven_plan": "startup-2"
+										}]
 									}
 								]
 							}
 						}
 					`)
+
+			elasticsearchPlanSpecificConfig := provider.PlanSpecificConfig{}
+			elasticsearchPlanSpecificConfig.AivenPlan = "startup-1"
+			elasticsearchPlanSpecificConfig.ElasticsearchVersion = "6"
+
+			influxDBPlanSpecificConfig := provider.PlanSpecificConfig{}
+			influxDBPlanSpecificConfig.AivenPlan = "startup-2"
 
 			expectedConfig := &provider.Config{
 				Cloud:             "aws-eu-west-1",
@@ -46,10 +59,17 @@ var _ = Describe("Config", func() {
 							},
 							Plans: []provider.Plan{
 								{
-									PlanSpecificConfig: provider.PlanSpecificConfig{
-										AivenPlan:            "startup-1",
-										ElasticsearchVersion: "6",
-									},
+									PlanSpecificConfig: elasticsearchPlanSpecificConfig,
+								},
+							},
+						},
+						{
+							Service: brokerapi.Service{
+								Name: "influxdb",
+							},
+							Plans: []provider.Plan{
+								{
+									PlanSpecificConfig: influxDBPlanSpecificConfig,
 								},
 							},
 						},
@@ -137,22 +157,44 @@ var _ = Describe("Config", func() {
 			Expect(err).To(MatchError("Config error: every plan must specify an `aiven_plan`"))
 		})
 
-		It("returns an error if a plan is missing the Elasticsearch version", func() {
-			rawConfig = json.RawMessage(`
-						{
-							"cloud": "aws-eu-west-1",
-							"catalog": {
-								"services": [
-									{
-										"name": "elasticsearch",
-										"plans": [{"aiven_plan": "plan-a"}]
-									}
-								]
+		Context("when the service is elasticsearch", func() {
+			It("returns an error if a plan is missing the Elasticsearch version", func() {
+				rawConfig = json.RawMessage(`
+							{
+								"cloud": "aws-eu-west-1",
+								"catalog": {
+									"services": [
+										{
+											"name": "elasticsearch",
+											"plans": [{"aiven_plan": "plan-a"}]
+										}
+									]
+								}
 							}
-						}
-					`)
-			_, err := provider.DecodeConfig(rawConfig)
-			Expect(err).To(MatchError("Config error: every plan must specify an `elasticsearch_version`"))
+						`)
+				_, err := provider.DecodeConfig(rawConfig)
+				Expect(err).To(MatchError("Config error: every elasticsearch plan must specify an `elasticsearch_version`"))
+			})
+		})
+
+		Context("when the service is InfluxDB", func() {
+			It("does not care about the Elasticsearch version", func() {
+				rawConfig = json.RawMessage(`
+							{
+								"cloud": "aws-eu-west-1",
+								"catalog": {
+									"services": [
+										{
+											"name": "influxDB",
+											"plans": [{"aiven_plan": "plan-a"}]
+										}
+									]
+								}
+							}
+						`)
+				_, err := provider.DecodeConfig(rawConfig)
+				Expect(err).NotTo(HaveOccurred())
+			})
 		})
 	})
 })

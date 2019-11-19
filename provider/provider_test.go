@@ -29,6 +29,14 @@ var _ = Describe("Provider", func() {
 	)
 
 	BeforeEach(func() {
+		planSpecificConfig1 := provider.PlanSpecificConfig{}
+		planSpecificConfig1.AivenPlan = "startup-1"
+		planSpecificConfig1.ElasticsearchVersion = "6"
+
+		planSpecificConfig2 := provider.PlanSpecificConfig{}
+		planSpecificConfig2.AivenPlan = "startup-2"
+		planSpecificConfig2.ElasticsearchVersion = "6"
+
 		config = &provider.Config{
 			Cloud:             "aws-eu-west-1",
 			ServiceNamePrefix: "env",
@@ -38,18 +46,18 @@ var _ = Describe("Provider", func() {
 						Service: brokerapi.Service{ID: "uuid-1"},
 						Plans: []provider.Plan{
 							{
-								ServicePlan: brokerapi.ServicePlan{ID: "uuid-2"},
-								PlanSpecificConfig: provider.PlanSpecificConfig{
-									AivenPlan:            "startup-1",
-									ElasticsearchVersion: "6",
+								ServicePlan: brokerapi.ServicePlan{
+									ID:   "uuid-2",
+									Name: "elasticsearch",
 								},
+								PlanSpecificConfig: planSpecificConfig1,
 							},
 							{
-								ServicePlan: brokerapi.ServicePlan{ID: "uuid-3"},
-								PlanSpecificConfig: provider.PlanSpecificConfig{
-									AivenPlan:            "startup-2",
-									ElasticsearchVersion: "6",
+								ServicePlan: brokerapi.ServicePlan{
+									ID:   "uuid-3",
+									Name: "elasticsearch",
 								},
+								PlanSpecificConfig: planSpecificConfig2,
 							},
 						},
 					},
@@ -67,7 +75,7 @@ var _ = Describe("Provider", func() {
 		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Service:    brokerapi.Service{ID: "uuid-1"},
+				Service:    brokerapi.Service{ID: "uuid-1", Name: "elasticsearch"},
 				Plan:       brokerapi.ServicePlan{ID: "uuid-2"},
 			}
 			It("includes ip whitelist", func() {
@@ -76,15 +84,16 @@ var _ = Describe("Provider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
+				userConfig := aiven.UserConfig{}
+				userConfig.ElasticsearchVersion = "6"
+				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
+
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       "aws-eu-west-1",
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
-					UserConfig: aiven.UserConfig{
-						ElasticsearchVersion: "6",
-						IPFilter:             []string{"1.2.3.4", "5.6.7.8"},
-					},
+					UserConfig:  userConfig,
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
@@ -95,15 +104,16 @@ var _ = Describe("Provider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
+				userConfig := aiven.UserConfig{}
+				userConfig.ElasticsearchVersion = "6"
+				userConfig.IPFilter = []string{}
+
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       "aws-eu-west-1",
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
-					UserConfig: aiven.UserConfig{
-						ElasticsearchVersion: "6",
-						IPFilter:             []string{},
-					},
+					UserConfig:  userConfig,
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 			})
@@ -189,7 +199,13 @@ var _ = Describe("Provider", func() {
 			testESHost, testESPort = parts[0], parts[1]
 
 			fakeAivenClient.CreateServiceUserReturnsOnCall(0, stubPassword, nil)
-			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, testESHost, testESPort, nil)
+			fakeAivenClient.GetServiceReturnsOnCall(0, &aiven.Service{
+				ServiceUriParams: aiven.ServiceUriParams{
+					Host: testESHost,
+					Port: testESPort,
+				},
+				ServiceType: "elasticsearch",
+			}, nil)
 
 			bindCtx, bindCancel = context.WithTimeout(context.Background(), 5*time.Second)
 			bindData = provider.BindData{
@@ -218,17 +234,21 @@ var _ = Describe("Provider", func() {
 			expectedGetServiceConnectionDetailsParameters := &aiven.GetServiceInput{
 				ServiceName: "env-" + strings.ToLower(testInstanceID),
 			}
-			Expect(fakeAivenClient.GetServiceConnectionDetailsArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
+			Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceConnectionDetailsParameters))
 
-			expectedBinding := brokerapi.Binding{
-				Credentials: provider.Credentials{
-					URI:      fmt.Sprintf("https://%s:%s@%s:%s", testBindingID, stubPassword, testESHost, testESPort),
-					Hostname: testESHost,
-					Port:     testESPort,
-					Username: testBindingID,
-					Password: stubPassword,
-				},
-			}
+			expectedCreds := provider.Credentials{}
+
+			expectedCreds.URI = fmt.Sprintf(
+				"https://%s:%s@%s:%s",
+				testBindingID, stubPassword, testESHost, testESPort,
+			)
+			expectedCreds.Hostname = testESHost
+			expectedCreds.Port = testESPort
+			expectedCreds.Username = testBindingID
+			expectedCreds.Password = stubPassword
+
+			expectedBinding := brokerapi.Binding{Credentials: expectedCreds}
+
 			Expect(actualBinding).To(Equal(expectedBinding))
 		})
 
@@ -240,7 +260,7 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("errors if the client fails to get the service", func() {
-			fakeAivenClient.GetServiceConnectionDetailsReturnsOnCall(0, "", "", errors.New("some-error"))
+			fakeAivenClient.GetServiceReturnsOnCall(0, nil, errors.New("some-error"))
 
 			_, err := aivenProvider.Bind(bindCtx, bindData)
 			Expect(err).To(HaveOccurred())
@@ -336,13 +356,14 @@ var _ = Describe("Provider", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
+			userConfig := aiven.UserConfig{}
+			userConfig.ElasticsearchVersion = "6"
+			userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
+
 			expectedParameters := &aiven.UpdateServiceInput{
 				ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Plan:        "startup-2",
-				UserConfig: aiven.UserConfig{
-					ElasticsearchVersion: "6",
-					IPFilter:             []string{"1.2.3.4", "5.6.7.8"},
-				},
+				UserConfig:  userConfig,
 			}
 			Expect(fakeAivenClient.UpdateServiceArgsForCall(0)).To(Equal(expectedParameters))
 		})
@@ -399,12 +420,14 @@ var _ = Describe("Provider", func() {
 			}
 
 			twoMinutesAgo := time.Now().Add(-1 * 2 * time.Minute)
-			fakeAivenClient.GetServiceStatusReturnsOnCall(0, aiven.Running, twoMinutesAgo, nil)
+			fakeAivenClient.GetServiceReturnsOnCall(0, &aiven.Service{
+				State: aiven.Running, UpdateTime: twoMinutesAgo,
+			}, nil)
 			actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(fakeAivenClient.GetServiceStatusArgsForCall(0)).To(Equal(expectedGetServiceStatusParameters))
+			Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceStatusParameters))
 			Expect(actualLastOperationState).To(Equal(brokerapi.Succeeded))
 			Expect(description).To(Equal("Last operation succeeded"))
 		})
@@ -425,11 +448,13 @@ var _ = Describe("Provider", func() {
 				}
 
 				thirtySecondsAgo := time.Now().Add(-1 * 30 * time.Second)
-				fakeAivenClient.GetServiceStatusReturnsOnCall(0, aiven.Running, thirtySecondsAgo, nil)
+				fakeAivenClient.GetServiceReturnsOnCall(0, &aiven.Service{
+					State: aiven.Running, UpdateTime: thirtySecondsAgo,
+				}, nil)
 				actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(fakeAivenClient.GetServiceStatusArgsForCall(0)).To(Equal(expectedGetServiceParameters))
+				Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceParameters))
 
 				Expect(actualLastOperationState).To(Equal(brokerapi.InProgress))
 				Expect(description).To(Equal("Preparing to apply update"))
@@ -441,8 +466,7 @@ var _ = Describe("Provider", func() {
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 			}
 
-			twoMinutesAgo := time.Now().Add(-1 * 2 * time.Minute)
-			fakeAivenClient.GetServiceStatusReturnsOnCall(0, aiven.Running, twoMinutesAgo, errors.New("some-error"))
+			fakeAivenClient.GetServiceReturnsOnCall(0, nil, errors.New("some-error"))
 
 			actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 

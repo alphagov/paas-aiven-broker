@@ -2,20 +2,20 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/alphagov/paas-aiven-broker/client/elastic"
+	"github.com/alphagov/paas-aiven-broker/client/influxdb"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/pivotal-cf/brokerapi"
 )
 
 const AIVEN_BASE_URL string = "https://api.aiven.io"
-const SERVICE_TYPE string = "elasticsearch"
 
 type AivenProvider struct {
 	Client aiven.Client
@@ -43,15 +43,27 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 	if err != nil {
 		return "", "", err
 	}
+
+	userConfig := aiven.UserConfig{}
+	userConfig.IPFilter = ipFilter
+
+	if provisionData.Service.Name == "elasticsearch" {
+		userConfig.ElasticsearchVersion = plan.ElasticsearchVersion
+	} else if provisionData.Service.Name == "influxdb" {
+		// Nothing to do
+	} else {
+		return "", "", fmt.Errorf(
+			"Cannot provision service for unknown service %s",
+			provisionData.Service.Name,
+		)
+	}
+
 	createServiceInput := &aiven.CreateServiceInput{
 		Cloud:       ap.Config.Cloud,
 		Plan:        plan.AivenPlan,
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, provisionData.InstanceID),
-		ServiceType: SERVICE_TYPE,
-		UserConfig: aiven.UserConfig{
-			ElasticsearchVersion: plan.ElasticsearchVersion,
-			IPFilter:             ipFilter,
-		},
+		ServiceType: provisionData.Service.Name,
+		UserConfig:  userConfig,
 	}
 	_, err = ap.Client.CreateService(createServiceInput)
 	return dashboardURL, operationData, err
@@ -71,14 +83,6 @@ func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData Deprov
 	return "", err
 }
 
-type Credentials struct {
-	URI      string `json:"uri"`
-	Hostname string `json:"hostname"`
-	Port     string `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
 	serviceName := buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID)
 	user := bindData.BindingID
@@ -91,23 +95,29 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 		return brokerapi.Binding{}, err
 	}
 
-	host, port, err := ap.Client.GetServiceConnectionDetails(&aiven.GetServiceInput{
+	service, err := ap.Client.GetService(&aiven.GetServiceInput{
 		ServiceName: serviceName,
 	})
 	if err != nil {
 		return brokerapi.Binding{}, err
 	}
 
-	credentials := Credentials{
-		URI:      buildURI(user, password, host, port),
-		Hostname: host,
-		Port:     port,
-		Username: user,
-		Password: password,
+	host := service.ServiceUriParams.Host
+	port := service.ServiceUriParams.Port
+	serviceType := service.ServiceType
+
+	if host == "" || port == "" {
+		return brokerapi.Binding{}, errors.New(
+			"Error getting service connection details: no connection details found in response JSON",
+		)
 	}
 
-	err = ensureUserAvailability(ctx, credentials.URI)
+	credentials, err := BuildCredentials(serviceType, user, password, host, port)
 	if err != nil {
+		return brokerapi.Binding{}, err
+	}
+
+	if err = ensureUserAvailability(ctx, serviceType, credentials); err != nil {
 		// Polling is only a best-effort attempt to work around Aiven API delays.
 		// We therefore continue anyway if it times out.
 		if err != context.DeadlineExceeded {
@@ -120,20 +130,35 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	}, nil
 }
 
-func buildURI(user, password, host, port string) string {
-	uri := &url.URL{
-		Scheme: "https",
-		User:   url.UserPassword(user, password),
-		Host:   fmt.Sprintf("%s:%s", host, port),
+func ensureUserAvailability(
+	ctx context.Context,
+	serviceType string,
+	credentials Credentials,
+) error {
+	if serviceType == "elasticsearch" {
+		return tryAvailability(ctx, func() error {
+			client := elastic.New(credentials.URI, nil)
+			_, err := client.Version()
+			return err
+		})
+	} else if serviceType == "influxdb" {
+		return tryAvailability(ctx, func() error {
+			client := influxdb.New(credentials.URI, nil)
+			_, err := client.Ping()
+			return err
+		})
+	} else {
+		return fmt.Errorf(
+			"Cannot ensure availability for unknown service %s", serviceType,
+		)
 	}
-	return uri.String()
 }
 
-func ensureUserAvailability(ctx context.Context, uri string) error {
-	client := elastic.New(uri, nil)
-	_, err := client.Version()
-	if err == nil {
-		// quick path
+func tryAvailability(
+	ctx context.Context,
+	availabilityCheck func() error,
+) error {
+	if availabilityCheck() == nil {
 		return nil
 	}
 
@@ -142,15 +167,13 @@ func ensureUserAvailability(ctx context.Context, uri string) error {
 	for {
 		select {
 		case <-ticker.C:
-			_, err = client.Version()
-			if err == nil {
+			if availabilityCheck() == nil {
 				return nil
 			}
 		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
-	return nil
 }
 
 func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err error) {
@@ -172,13 +195,14 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 		return "", err
 	}
 
+	userConfig := aiven.UserConfig{}
+	userConfig.IPFilter = ipFilter
+	userConfig.ElasticsearchVersion = plan.ElasticsearchVersion // Pass empty version through if not InfluxDB
+
 	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
 		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, updateData.InstanceID),
 		Plan:        plan.AivenPlan,
-		UserConfig: aiven.UserConfig{
-			ElasticsearchVersion: plan.ElasticsearchVersion,
-			IPFilter:             ipFilter,
-		},
+		UserConfig:  userConfig,
 	})
 
 	switch err := err.(type) {
@@ -191,17 +215,27 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (ope
 	default:
 		return "", err
 	}
-
-	return "", nil
 }
 
-func (ap *AivenProvider) LastOperation(ctx context.Context, lastOperationData LastOperationData) (state brokerapi.LastOperationState, description string, err error) {
-	status, updateTime, err := ap.Client.GetServiceStatus(&aiven.GetServiceInput{
-		ServiceName: buildServiceName(ap.Config.ServiceNamePrefix, lastOperationData.InstanceID),
+func (ap *AivenProvider) LastOperation(
+	ctx context.Context,
+	lastOperationData LastOperationData,
+) (state brokerapi.LastOperationState, description string, err error) {
+	serviceName := buildServiceName(
+		ap.Config.ServiceNamePrefix,
+		lastOperationData.InstanceID,
+	)
+
+	service, err := ap.Client.GetService(&aiven.GetServiceInput{
+		ServiceName: serviceName,
 	})
+
 	if err != nil {
 		return "", "", err
 	}
+
+	status := service.State
+	updateTime := service.UpdateTime
 
 	if updateTime.After(time.Now().Add(-1 * 60 * time.Second)) {
 		return brokerapi.InProgress, "Preparing to apply update", nil
