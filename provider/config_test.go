@@ -49,8 +49,7 @@ var _ = Describe("Config", func() {
 			expectedConfig := &provider.Config{
 				Cloud:             "aws-eu-west-1",
 				ServiceNamePrefix: "test",
-				APIToken:          "token",
-				Project:           "project",
+
 				Catalog: provider.Catalog{
 					Services: []provider.Service{
 						{
@@ -75,6 +74,11 @@ var _ = Describe("Config", func() {
 						},
 					},
 				},
+
+				// These are set via environment variables
+				APIToken:                               "token",
+				Project:                                "project",
+				PrometheusServiceIntegrationEndpointID: "prom-endpoint-id",
 			}
 
 			actualConfig, err := provider.DecodeConfig(rawConfig)

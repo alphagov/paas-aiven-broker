@@ -8,6 +8,7 @@ integration:
 
 unit: export SERVICE_NAME_PREFIX=test
 unit: export AIVEN_API_TOKEN=token
+unit: export AIVEN_PROMETHEUS_ENDPOINT_ID=prom-endpoint-id
 unit: export AIVEN_PROJECT=project
 unit:
 	ginkgo $(COMMAND) -r --skipPackage=ci $(PACKAGE)

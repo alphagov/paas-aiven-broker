@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	Cloud             string `json:"cloud"`
-	ServiceNamePrefix string
-	APIToken          string
-	Project           string
-	Catalog           Catalog `json:"catalog"`
+	Cloud                                  string `json:"cloud"`
+	ServiceNamePrefix                      string
+	APIToken                               string
+	Project                                string
+	PrometheusServiceIntegrationEndpointID string
+	Catalog                                Catalog `json:"catalog"`
 }
 
 type Catalog struct {
@@ -96,6 +97,10 @@ func DecodeConfig(b []byte) (*Config, error) {
 	config.APIToken = os.Getenv("AIVEN_API_TOKEN")
 	if config.APIToken == "" {
 		return config, errors.New("Config error: must pass an Aiven API token")
+	}
+	config.PrometheusServiceIntegrationEndpointID = os.Getenv("AIVEN_PROMETHEUS_ENDPOINT_ID")
+	if config.PrometheusServiceIntegrationEndpointID == "" {
+		return config, errors.New("Config error: must pass an Aiven Prometheus endpoint ID")
 	}
 
 	config.Project = os.Getenv("AIVEN_PROJECT")

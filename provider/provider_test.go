@@ -63,6 +63,7 @@ var _ = Describe("Provider", func() {
 					},
 				},
 			},
+			PrometheusServiceIntegrationEndpointID: "prom-endpoint-id",
 		}
 		fakeAivenClient = &fakes.FakeClient{}
 		aivenProvider = &provider.AivenProvider{
@@ -78,6 +79,7 @@ var _ = Describe("Provider", func() {
 				Service:    brokerapi.Service{ID: "uuid-1", Name: "elasticsearch"},
 				Plan:       brokerapi.ServicePlan{ID: "uuid-2"},
 			}
+
 			It("includes ip whitelist", func() {
 				os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
 				_, _, err := aivenProvider.Provision(context.Background(), provisionData)
@@ -98,6 +100,7 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
 			})
+
 			It("excludes ip whitelist when not set", func() {
 				os.Unsetenv("IP_WHITELIST")
 				_, _, err := aivenProvider.Provision(context.Background(), provisionData)

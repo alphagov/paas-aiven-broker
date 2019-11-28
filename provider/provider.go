@@ -65,6 +65,7 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 		ServiceType: provisionData.Service.Name,
 		UserConfig:  userConfig,
 	}
+
 	_, err = ap.Client.CreateService(createServiceInput)
 	return dashboardURL, operationData, err
 }

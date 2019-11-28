@@ -14,6 +14,8 @@ import (
 type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
 	GetService(params *GetServiceInput) (*Service, error)
+	ListServices() ([]Service, error)
+	CreateServiceIntegration(params *CreateServiceIntegrationInput) error
 	DeleteService(params *DeleteServiceInput) error
 	CreateServiceUser(params *CreateServiceUserInput) (string, error)
 	DeleteServiceUser(params *DeleteServiceUserInput) (string, error)
@@ -53,6 +55,16 @@ type CreateServiceInput struct {
 	UserConfig  UserConfig `json:"user_config"`
 }
 
+type CreateServiceIntegrationInput struct {
+	DestinationEndpointID string `json:"dest_endpoint_id,omitempty"`
+	IntegrationType       string `json:"integration_type,omitempty"`
+	SourceService         string `json:"source_service,omitempty"`
+}
+
+type ServiceIntegration struct {
+	IntegrationType string `json:"integration_type,omitempty"`
+}
+
 type DeleteServiceInput struct {
 	ServiceName string
 }
@@ -86,11 +98,17 @@ type GetServiceResponse struct {
 	Service Service `json:"service"`
 }
 
+type ListServicesResponse struct {
+	Services []Service `json:"services"`
+}
+
 type Service struct {
-	State            ServiceStatus    `json:"state"`
-	UpdateTime       time.Time        `json:"update_time"`
-	ServiceUriParams ServiceUriParams `json:"service_uri_params"`
-	ServiceType      string           `json:"service_type"`
+	State               ServiceStatus        `json:"state"`
+	UpdateTime          time.Time            `json:"update_time"`
+	ServiceUriParams    ServiceUriParams     `json:"service_uri_params"`
+	ServiceName         string               `json:"service_name"`
+	ServiceType         string               `json:"service_type"`
+	ServiceIntegrations []ServiceIntegration `json:"service_integrations"`
 }
 
 type ServiceStatus string
@@ -144,6 +162,29 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 	}
 
 	return string(b), nil
+}
+
+func (a *HttpClient) CreateServiceIntegration(params *CreateServiceIntegrationInput) error {
+	reqBody, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+
+	res, err := a.do("POST", fmt.Sprintf("/project/%s/integration", a.Project), reqBody)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("Error creating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
+	return nil
 }
 
 var ErrInstanceDoesNotExist = errors.New("Error deleting service: service instance does not exist")
@@ -262,6 +303,31 @@ func (a *HttpClient) GetService(params *GetServiceInput) (*Service, error) {
 	}
 
 	return &service, nil
+}
+
+func (a *HttpClient) ListServices() ([]Service, error) {
+	res, err := a.do("GET", fmt.Sprintf("/project/%s/service", a.Project), nil)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Error listing services: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
+	listServicesResponse := &ListServicesResponse{}
+	if err := json.NewDecoder(res.Body).Decode(listServicesResponse); err != nil {
+		return nil, err
+	}
+
+	services := listServicesResponse.Services
+
+	return services, nil
 }
 
 func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
