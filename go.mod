@@ -11,7 +11,8 @@ require (
 	github.com/onsi/ginkgo v1.5.0
 	github.com/onsi/gomega v1.4.0
 	github.com/pborman/uuid v1.2.0 // indirect
-	github.com/pivotal-cf/brokerapi v2.0.4+incompatible
+	github.com/pivotal-cf/brokerapi v6.4.2+incompatible
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/net v0.0.0-20180611182652-db08ff08e862 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect

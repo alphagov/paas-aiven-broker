@@ -310,7 +310,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)
 
 			Expect(log).To(gbytes.Say("binding-start"))
 		})
@@ -319,7 +319,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)
 
 			Expect(fakeProvider.BindCallCount()).To(Equal(1))
 			receivedContext, _ := fakeProvider.BindArgsForCall(0)
@@ -333,7 +333,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)
 
 			Expect(fakeProvider.BindCallCount()).To(Equal(1))
 			_, bindData := fakeProvider.BindArgsForCall(0)
@@ -352,7 +352,7 @@ var _ = Describe("Broker", func() {
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 			fakeProvider.BindReturns(brokerapi.Binding{}, errors.New("ERROR BINDING"))
 
-			_, err := b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+			_, err := b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)
 
 			Expect(err).To(MatchError("ERROR BINDING"))
 		})
@@ -363,7 +363,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.Bind(context.Background(), instanceID, bindingID, validBindDetails)
+			b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)
 
 			Expect(log).To(gbytes.Say("binding-success"))
 		})
@@ -375,7 +375,7 @@ var _ = Describe("Broker", func() {
 				Credentials: "some-value-of-interface{}-type",
 			}, nil)
 
-			Expect(b.Bind(context.Background(), instanceID, bindingID, validBindDetails)).
+			Expect(b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)).
 				To(Equal(brokerapi.Binding{
 					Credentials: "some-value-of-interface{}-type",
 				}))
@@ -402,7 +402,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails, false)
 
 			Expect(log).To(gbytes.Say("unbinding-start"))
 		})
@@ -411,7 +411,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails, false)
 
 			Expect(fakeProvider.UnbindCallCount()).To(Equal(1))
 			receivedContext, _ := fakeProvider.UnbindArgsForCall(0)
@@ -425,7 +425,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails, false)
 
 			Expect(fakeProvider.UnbindCallCount()).To(Equal(1))
 			_, unbindData := fakeProvider.UnbindArgsForCall(0)
@@ -444,7 +444,7 @@ var _ = Describe("Broker", func() {
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 			fakeProvider.UnbindReturns(errors.New("ERROR UNBINDING"))
 
-			err := b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+			_, err := b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails, false)
 
 			Expect(err).To(MatchError("ERROR UNBINDING"))
 		})
@@ -455,7 +455,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails)
+			b.Unbind(context.Background(), instanceID, bindingID, validUnbindDetails, false)
 
 			Expect(log).To(gbytes.Say("unbinding-success"))
 		})
@@ -637,7 +637,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.LastOperation(context.Background(), instanceID, operationData)
+			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
 
 			Expect(log).To(gbytes.Say("last-operation-start"))
 		})
@@ -646,7 +646,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.LastOperation(context.Background(), instanceID, operationData)
+			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
 
 			Expect(fakeProvider.LastOperationCallCount()).To(Equal(1))
 			receivedContext, _ := fakeProvider.LastOperationArgsForCall(0)
@@ -660,7 +660,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.LastOperation(context.Background(), instanceID, operationData)
+			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
 
 			Expect(fakeProvider.LastOperationCallCount()).To(Equal(1))
 			_, lastOperationData := fakeProvider.LastOperationArgsForCall(0)
@@ -678,7 +678,7 @@ var _ = Describe("Broker", func() {
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", errors.New("ERROR LAST OPERATION"))
 
-			_, err := b.LastOperation(context.Background(), instanceID, operationData)
+			_, err := b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
 
 			Expect(err).To(MatchError("ERROR LAST OPERATION"))
 		})
@@ -689,7 +689,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.LastOperation(context.Background(), instanceID, operationData)
+			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
 
 			Expect(log).To(gbytes.Say("last-operation-success"))
 		})
@@ -699,7 +699,7 @@ var _ = Describe("Broker", func() {
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "Provision successful", nil)
 
-			Expect(b.LastOperation(context.Background(), instanceID, operationData)).
+			Expect(b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})).
 				To(Equal(brokerapi.LastOperation{
 					State:       brokerapi.Succeeded,
 					Description: "Provision successful",

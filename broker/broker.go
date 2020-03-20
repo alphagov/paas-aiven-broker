@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -21,6 +22,18 @@ func New(config Config, serviceProvider provider.ServiceProvider, logger lager.L
 		Provider: serviceProvider,
 		logger:   logger,
 	}
+}
+
+func (b *Broker) GetBinding(ctx context.Context, first, second string) (brokerapi.GetBindingSpec, error) {
+	return brokerapi.GetBindingSpec{}, fmt.Errorf("GetBinding method not implemented")
+}
+
+func (b *Broker) GetInstance(ctx context.Context, first string) (brokerapi.GetInstanceDetailsSpec, error) {
+	return brokerapi.GetInstanceDetailsSpec{}, fmt.Errorf("GetInstance method not implemented")
+}
+
+func (b *Broker) LastBindingOperation(ctx context.Context, first, second string, pollDetails brokerapi.PollDetails) (brokerapi.LastOperation, error) {
+	return brokerapi.LastOperation{}, fmt.Errorf("LastBindingOperation method not implemented")
 }
 
 func (b *Broker) Services(ctx context.Context) ([]brokerapi.Service, error) {
@@ -136,9 +149,9 @@ func (b *Broker) Deprovision(
 
 func (b *Broker) Bind(
 	ctx context.Context,
-	instanceID,
-	bindingID string,
+	instanceID, bindingID string,
 	details brokerapi.BindDetails,
+	asyncAllowed bool,
 ) (brokerapi.Binding, error) {
 	b.logger.Debug("binding-start", lager.Data{
 		"instance-id": instanceID,
@@ -171,10 +184,10 @@ func (b *Broker) Bind(
 
 func (b *Broker) Unbind(
 	ctx context.Context,
-	instanceID,
-	bindingID string,
+	instanceID, bindingID string,
 	details brokerapi.UnbindDetails,
-) error {
+	asyncAllowed bool,
+) (brokerapi.UnbindSpec, error) {
 	b.logger.Debug("unbinding-start", lager.Data{
 		"instance-id": instanceID,
 		"binding-id":  bindingID,
@@ -192,7 +205,7 @@ func (b *Broker) Unbind(
 
 	err := b.Provider.Unbind(providerCtx, unbindData)
 	if err != nil {
-		return err
+		return brokerapi.UnbindSpec{}, err
 	}
 
 	b.logger.Debug("unbinding-success", lager.Data{
@@ -201,7 +214,7 @@ func (b *Broker) Unbind(
 		"details":     details,
 	})
 
-	return nil
+	return brokerapi.UnbindSpec{}, nil
 }
 
 func (b *Broker) Update(
@@ -263,12 +276,12 @@ func (b *Broker) Update(
 
 func (b *Broker) LastOperation(
 	ctx context.Context,
-	instanceID,
-	operationData string,
+	instanceID string,
+	pollDetails brokerapi.PollDetails,
 ) (brokerapi.LastOperation, error) {
 	b.logger.Debug("last-operation-start", lager.Data{
 		"instance-id":    instanceID,
-		"operation-data": operationData,
+		"operation-data": pollDetails.OperationData,
 	})
 
 	providerCtx, cancelFunc := context.WithTimeout(ctx, 30*time.Second)
@@ -276,7 +289,7 @@ func (b *Broker) LastOperation(
 
 	lastOperationData := provider.LastOperationData{
 		InstanceID:    instanceID,
-		OperationData: operationData,
+		OperationData: pollDetails.OperationData,
 	}
 
 	state, description, err := b.Provider.LastOperation(providerCtx, lastOperationData)
@@ -286,7 +299,7 @@ func (b *Broker) LastOperation(
 
 	b.logger.Debug("last-operation-success", lager.Data{
 		"instance-id":    instanceID,
-		"operation-data": operationData,
+		"operation-data": pollDetails.OperationData,
 	})
 
 	return brokerapi.LastOperation{
