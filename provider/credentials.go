@@ -23,9 +23,14 @@ type InfluxDBPrometheusRemoteCredentials struct {
 	BasicAuthCredentials InfluxDBPrometheusBasicAuthCredentials `json:"basic_auth"`
 }
 
+type InfluxDBPrometheusRemoteReadCredentials struct {
+	InfluxDBPrometheusRemoteCredentials
+	ReadRecent bool `json:"read_recent"`
+}
+
 type InfluxDBPrometheusCredentials struct {
-	RemoteRead  []InfluxDBPrometheusRemoteCredentials `json:"remote_read"`
-	RemoteWrite []InfluxDBPrometheusRemoteCredentials `json:"remote_write"`
+	RemoteRead  []InfluxDBPrometheusRemoteReadCredentials `json:"remote_read"`
+	RemoteWrite []InfluxDBPrometheusRemoteCredentials     `json:"remote_write"`
 }
 
 type InfluxDBCredentials struct {
@@ -79,21 +84,23 @@ func addInfluxDBCredentials(credentials *Credentials) {
 		credentials.Hostname, credentials.Port,
 	)
 
-	credentials.InfluxDBPrometheus = &InfluxDBPrometheusCredentials{
-		RemoteRead: []InfluxDBPrometheusRemoteCredentials{{
-			URL: remoteReadURL,
-			BasicAuthCredentials: InfluxDBPrometheusBasicAuthCredentials{
-				Username: credentials.Username,
-				Password: credentials.Password,
-			},
-		}},
+	remoteReadCreds := InfluxDBPrometheusRemoteReadCredentials{}
+	remoteReadCreds.URL = remoteReadURL
+	remoteReadCreds.ReadRecent = true
+	remoteReadCreds.BasicAuthCredentials = InfluxDBPrometheusBasicAuthCredentials{
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}
 
-		RemoteWrite: []InfluxDBPrometheusRemoteCredentials{{
-			URL: remoteWriteURL,
-			BasicAuthCredentials: InfluxDBPrometheusBasicAuthCredentials{
-				Username: credentials.Username,
-				Password: credentials.Password,
-			},
-		}},
+	remoteWriteCreds := InfluxDBPrometheusRemoteCredentials{}
+	remoteWriteCreds.URL = remoteWriteURL
+	remoteWriteCreds.BasicAuthCredentials = InfluxDBPrometheusBasicAuthCredentials{
+		Username: credentials.Username,
+		Password: credentials.Password,
+	}
+
+	credentials.InfluxDBPrometheus = &InfluxDBPrometheusCredentials{
+		RemoteRead:  []InfluxDBPrometheusRemoteReadCredentials{remoteReadCreds},
+		RemoteWrite: []InfluxDBPrometheusRemoteCredentials{remoteWriteCreds},
 	}
 }

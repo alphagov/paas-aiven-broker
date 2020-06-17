@@ -73,6 +73,7 @@ var _ = Describe("Credentials", func() {
 					"prometheus": {
 						"remote_read": [{
 							"url": "https://influxdb.aiven.io:2701/api/v1/prom/read?db=defaultdb",
+							"read_recent": true,
 							"basic_auth": {
 								"username": "hich",
 								"password": "rickey"
