@@ -35,6 +35,7 @@ type InfluxDBPrometheusCredentials struct {
 
 type InfluxDBCredentials struct {
 	InfluxDBPrometheus *InfluxDBPrometheusCredentials `json:"prometheus,omitempty"`
+	InfluxDBDatabase   string                         `json:"database,omitempty"`
 }
 
 type Credentials struct {
@@ -103,4 +104,5 @@ func addInfluxDBCredentials(credentials *Credentials) {
 		RemoteRead:  []InfluxDBPrometheusRemoteReadCredentials{remoteReadCreds},
 		RemoteWrite: []InfluxDBPrometheusRemoteCredentials{remoteWriteCreds},
 	}
+	credentials.InfluxDBDatabase = "defaultdb"
 }

@@ -322,6 +322,7 @@ var _ = Describe("Broker", func() {
 			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("port", BeAssignableToTypeOf(str)))
 			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("username", BeAssignableToTypeOf(str)))
 			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("password", BeAssignableToTypeOf(str)))
+			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("database", BeAssignableToTypeOf(str)))
 
 			// Ensure returned credentials conform to Prometheus config format
 			// https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_read
