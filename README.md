@@ -1,5 +1,11 @@
 # Aiven Service Broker
 
+⚠️
+When merging pull requests,
+please use the [gds-cli](https://github.com/alphagov/gds-cli)
+or [github_merge_sign](https://rubygems.org/gems/github_merge_sign)
+⚠️
+
 This is an [Open Service Broker API](https://www.openservicebrokerapi.org/) compliant service broker for services offered by [https://aiven.io/](https://aiven.io/).
 
 ## Running
