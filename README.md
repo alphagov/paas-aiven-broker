@@ -31,3 +31,5 @@ make integration
 ```
 
 Note: integration testing uses the real Aiven API and therefore incurs a cost.
+
+<!-- 2020-12-07[T]11:00:00 -->
