@@ -27,8 +27,8 @@ const (
 	defaultTimeout time.Duration = 15 * time.Minute
 
 	elasticsearchServiceGUID     = "uuid-elasticsearch-service"
-	elasticsearchInitialPlanGUID = "uuid-basic-elasticsearch-6"
-	elasticsearchUpgradePlanGUID = "uuid-supra-elasticsearch-6"
+	elasticsearchInitialPlanGUID = "uuid-basic-elasticsearch-7"
+	elasticsearchUpgradePlanGUID = "uuid-supra-elasticsearch-7"
 
 	influxDBServiceGUID = "uuid-influxdb-service"
 	influxDBPlanGUID    = "uuid-basic-influxdb-1"
@@ -47,14 +47,14 @@ var _ = Describe("Broker", func() {
 				"plan_updateable": true,
 				"plans": [{
 					"id": "%s",
-					"name": "basic-6",
+					"name": "basic-7",
 					"aiven_plan": "startup-4",
-					"elasticsearch_version": "6"
+					"elasticsearch_version": "7"
 				}, {
 					"id": "%s",
-					"name": "supra-6",
+					"name": "supra-7",
 					"aiven_plan": "startup-8",
-					"elasticsearch_version": "6"
+					"elasticsearch_version": "7"
 				}]
 			}, {
 				"id": "%s",
@@ -199,7 +199,7 @@ var _ = Describe("Broker", func() {
 			By("checking the version has actually been updated")
 			version, err := elasticsearchClient.Version()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(version).To(HavePrefix("6."))
+			Expect(version).To(HavePrefix("7."))
 
 			By("Unbinding")
 			res = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
