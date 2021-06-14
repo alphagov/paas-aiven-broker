@@ -1,7 +1,9 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,6 +22,8 @@ const AIVEN_BASE_URL string = "https://api.aiven.io"
 type AivenProvider struct {
 	Client aiven.Client
 	Config *Config
+	AllowUserProvisionParameters bool
+	AllowUserUpdateParameters    bool
 }
 
 func New(configJSON []byte) (*AivenProvider, error) {
@@ -31,21 +35,53 @@ func New(configJSON []byte) (*AivenProvider, error) {
 	return &AivenProvider{
 		Client: client,
 		Config: config,
+		AllowUserProvisionParameters: true,
+		AllowUserUpdateParameters:    true,
 	}, nil
 }
 
-func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionData) (dashboardURL, operationData string, err error) {
+func IPAddresses(iplist string)  string {
+	if len(iplist) > 0 {
+		_, ok := os.LookupEnv("IP_WHITELIST")
+		if ! ok {
+			return iplist
+		} else {
+			filterList := os.Getenv("IP_WHITELIST") + "," + iplist
+			return filterList
+		}
+	}
+	_, ok := os.LookupEnv("IP_WHITELIST")
+	if ! ok {
+		return ""
+	} else {
+		filterList := os.Getenv("IP_WHITELIST")
+		return filterList
+	}
+}
+
+func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionData, details brokerapi.ProvisionDetails,) (dashboardURL, operationData string, err error) {
 	plan, err := ap.Config.FindPlan(provisionData.Service.ID, provisionData.Plan.ID)
 	if err != nil {
 		return "", "", err
 	}
-	ipFilter, err := ParseIPWhitelist(os.Getenv("IP_WHITELIST"))
-	if err != nil {
-		return "", "", err
+
+	provisionParameters := ProvisionParameters{}
+	if ap.AllowUserProvisionParameters && len(details.RawParameters) > 0 {
+		decoder := json.NewDecoder(bytes.NewReader(details.RawParameters))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&provisionParameters); err != nil {
+			return "", "", err
+		}
 	}
 
 	userConfig := aiven.UserConfig{}
-	userConfig.IPFilter = ipFilter
+
+	addressList := IPAddresses(provisionParameters.UserIpFilter)
+	filterlist ,err := ParseIPWhitelist(addressList)
+	if err != nil {
+		return "", "", err
+	}
+	userConfig.IPFilter = filterlist
 
 	if provisionData.Service.Name == "elasticsearch" {
 		userConfig.ElasticsearchVersion = plan.ElasticsearchVersion
