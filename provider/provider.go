@@ -59,7 +59,7 @@ func IPAddresses(iplist string)  string {
 	}
 }
 
-func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionData, details brokerapi.ProvisionDetails,) (dashboardURL, operationData string, err error) {
+func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionData, details brokerapi.ProvisionDetails) (dashboardURL, operationData string, err error) {
 	plan, err := ap.Config.FindPlan(provisionData.Service.ID, provisionData.Plan.ID)
 	if err != nil {
 		return "", "", err
@@ -220,19 +220,30 @@ func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err
 	return err
 }
 
-func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData) (operationData string, err error) {
+func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, details brokerapi.UpdateDetails) (operationData string, err error) {
 	plan, err := ap.Config.FindPlan(updateData.Details.ServiceID, updateData.Details.PlanID)
 	if err != nil {
 		return "", err
 	}
 
-	ipFilter, err := ParseIPWhitelist(os.Getenv("IP_WHITELIST"))
-	if err != nil {
-		return "", err
+	UpdateParameters := UpdateParameters{}
+	if ap.AllowUserProvisionParameters && len(details.RawParameters) > 0 {
+		decoder := json.NewDecoder(bytes.NewReader(details.RawParameters))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&UpdateParameters); err != nil {
+			return "fail", err
+		}
 	}
 
 	userConfig := aiven.UserConfig{}
-	userConfig.IPFilter = ipFilter
+
+	addressList := IPAddresses(UpdateParameters.UserIpFilter)
+	filterlist ,err := ParseIPWhitelist(addressList)
+	if err != nil {
+		return "", err
+	}
+	userConfig.IPFilter = filterlist
+
 	userConfig.ElasticsearchVersion = plan.ElasticsearchVersion // Pass empty version through if not InfluxDB
 
 	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
