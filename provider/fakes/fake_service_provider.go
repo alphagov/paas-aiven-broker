@@ -6,22 +6,22 @@ import (
 	"sync"
 
 	"github.com/alphagov/paas-aiven-broker/provider"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 type FakeServiceProvider struct {
-	BindStub        func(context.Context, provider.BindData) (brokerapi.Binding, error)
+	BindStub        func(context.Context, provider.BindData) (domain.Binding, error)
 	bindMutex       sync.RWMutex
 	bindArgsForCall []struct {
 		arg1 context.Context
 		arg2 provider.BindData
 	}
 	bindReturns struct {
-		result1 brokerapi.Binding
+		result1 domain.Binding
 		result2 error
 	}
 	bindReturnsOnCall map[int]struct {
-		result1 brokerapi.Binding
+		result1 domain.Binding
 		result2 error
 	}
 	DeprovisionStub        func(context.Context, provider.DeprovisionData) (string, error)
@@ -38,19 +38,19 @@ type FakeServiceProvider struct {
 		result1 string
 		result2 error
 	}
-	LastOperationStub        func(context.Context, provider.LastOperationData) (brokerapi.LastOperationState, string, error)
+	LastOperationStub        func(context.Context, provider.LastOperationData) (domain.LastOperationState, string, error)
 	lastOperationMutex       sync.RWMutex
 	lastOperationArgsForCall []struct {
 		arg1 context.Context
 		arg2 provider.LastOperationData
 	}
 	lastOperationReturns struct {
-		result1 brokerapi.LastOperationState
+		result1 domain.LastOperationState
 		result2 string
 		result3 error
 	}
 	lastOperationReturnsOnCall map[int]struct {
-		result1 brokerapi.LastOperationState
+		result1 domain.LastOperationState
 		result2 string
 		result3 error
 	}
@@ -100,7 +100,7 @@ type FakeServiceProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeServiceProvider) Bind(arg1 context.Context, arg2 provider.BindData) (brokerapi.Binding, error) {
+func (fake *FakeServiceProvider) Bind(arg1 context.Context, arg2 provider.BindData) (domain.Binding, error) {
 	fake.bindMutex.Lock()
 	ret, specificReturn := fake.bindReturnsOnCall[len(fake.bindArgsForCall)]
 	fake.bindArgsForCall = append(fake.bindArgsForCall, struct {
@@ -125,7 +125,7 @@ func (fake *FakeServiceProvider) BindCallCount() int {
 	return len(fake.bindArgsForCall)
 }
 
-func (fake *FakeServiceProvider) BindCalls(stub func(context.Context, provider.BindData) (brokerapi.Binding, error)) {
+func (fake *FakeServiceProvider) BindCalls(stub func(context.Context, provider.BindData) (domain.Binding, error)) {
 	fake.bindMutex.Lock()
 	defer fake.bindMutex.Unlock()
 	fake.BindStub = stub
@@ -138,28 +138,28 @@ func (fake *FakeServiceProvider) BindArgsForCall(i int) (context.Context, provid
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeServiceProvider) BindReturns(result1 brokerapi.Binding, result2 error) {
+func (fake *FakeServiceProvider) BindReturns(result1 domain.Binding, result2 error) {
 	fake.bindMutex.Lock()
 	defer fake.bindMutex.Unlock()
 	fake.BindStub = nil
 	fake.bindReturns = struct {
-		result1 brokerapi.Binding
+		result1 domain.Binding
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeServiceProvider) BindReturnsOnCall(i int, result1 brokerapi.Binding, result2 error) {
+func (fake *FakeServiceProvider) BindReturnsOnCall(i int, result1 domain.Binding, result2 error) {
 	fake.bindMutex.Lock()
 	defer fake.bindMutex.Unlock()
 	fake.BindStub = nil
 	if fake.bindReturnsOnCall == nil {
 		fake.bindReturnsOnCall = make(map[int]struct {
-			result1 brokerapi.Binding
+			result1 domain.Binding
 			result2 error
 		})
 	}
 	fake.bindReturnsOnCall[i] = struct {
-		result1 brokerapi.Binding
+		result1 domain.Binding
 		result2 error
 	}{result1, result2}
 }
@@ -228,7 +228,7 @@ func (fake *FakeServiceProvider) DeprovisionReturnsOnCall(i int, result1 string,
 	}{result1, result2}
 }
 
-func (fake *FakeServiceProvider) LastOperation(arg1 context.Context, arg2 provider.LastOperationData) (brokerapi.LastOperationState, string, error) {
+func (fake *FakeServiceProvider) LastOperation(arg1 context.Context, arg2 provider.LastOperationData) (domain.LastOperationState, string, error) {
 	fake.lastOperationMutex.Lock()
 	ret, specificReturn := fake.lastOperationReturnsOnCall[len(fake.lastOperationArgsForCall)]
 	fake.lastOperationArgsForCall = append(fake.lastOperationArgsForCall, struct {
@@ -253,7 +253,7 @@ func (fake *FakeServiceProvider) LastOperationCallCount() int {
 	return len(fake.lastOperationArgsForCall)
 }
 
-func (fake *FakeServiceProvider) LastOperationCalls(stub func(context.Context, provider.LastOperationData) (brokerapi.LastOperationState, string, error)) {
+func (fake *FakeServiceProvider) LastOperationCalls(stub func(context.Context, provider.LastOperationData) (domain.LastOperationState, string, error)) {
 	fake.lastOperationMutex.Lock()
 	defer fake.lastOperationMutex.Unlock()
 	fake.LastOperationStub = stub
@@ -266,30 +266,30 @@ func (fake *FakeServiceProvider) LastOperationArgsForCall(i int) (context.Contex
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeServiceProvider) LastOperationReturns(result1 brokerapi.LastOperationState, result2 string, result3 error) {
+func (fake *FakeServiceProvider) LastOperationReturns(result1 domain.LastOperationState, result2 string, result3 error) {
 	fake.lastOperationMutex.Lock()
 	defer fake.lastOperationMutex.Unlock()
 	fake.LastOperationStub = nil
 	fake.lastOperationReturns = struct {
-		result1 brokerapi.LastOperationState
+		result1 domain.LastOperationState
 		result2 string
 		result3 error
 	}{result1, result2, result3}
 }
 
-func (fake *FakeServiceProvider) LastOperationReturnsOnCall(i int, result1 brokerapi.LastOperationState, result2 string, result3 error) {
+func (fake *FakeServiceProvider) LastOperationReturnsOnCall(i int, result1 domain.LastOperationState, result2 string, result3 error) {
 	fake.lastOperationMutex.Lock()
 	defer fake.lastOperationMutex.Unlock()
 	fake.LastOperationStub = nil
 	if fake.lastOperationReturnsOnCall == nil {
 		fake.lastOperationReturnsOnCall = make(map[int]struct {
-			result1 brokerapi.LastOperationState
+			result1 domain.LastOperationState
 			result2 string
 			result3 error
 		})
 	}
 	fake.lastOperationReturnsOnCall[i] = struct {
-		result1 brokerapi.LastOperationState
+		result1 domain.LastOperationState
 		result2 string
 		result3 error
 	}{result1, result2, result3}
