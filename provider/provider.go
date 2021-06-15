@@ -69,7 +69,6 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 	provisionParameters := &ProvisionParameters{}
 	if ap.AllowUserProvisionParameters && len(details.RawParameters) > 0 {
 		decoder := json.NewDecoder(bytes.NewReader(details.RawParameters))
-		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&provisionParameters); err != nil {
 			return "", "", err
 		}
@@ -230,7 +229,6 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, deta
 	UpdateParameters := &UpdateParameters{}
 	if ap.AllowUserProvisionParameters && len(details.RawParameters) > 0 {
 		decoder := json.NewDecoder(bytes.NewReader(details.RawParameters))
-		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&UpdateParameters); err != nil {
 			return "fail", err
 		}
