@@ -2,43 +2,43 @@ package provider
 
 import (
 	"encoding/json"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 
 type ProvisionData struct {
 	InstanceID string
-	Details    brokerapi.ProvisionDetails
-	Service    brokerapi.Service
-	Plan       brokerapi.ServicePlan
+	Details    domain.ProvisionDetails
+	Service    domain.Service
+	Plan       domain.ServicePlan
 	RawParameters json.RawMessage
 
 }
 
 type DeprovisionData struct {
 	InstanceID string
-	Details    brokerapi.DeprovisionDetails
-	Service    brokerapi.Service
-	Plan       brokerapi.ServicePlan
+	Details    domain.DeprovisionDetails
+	Service    domain.Service
+	Plan       domain.ServicePlan
 }
 
 type BindData struct {
 	InstanceID string
 	BindingID  string
-	Details    brokerapi.BindDetails
+	Details    domain.BindDetails
 }
 
 type UnbindData struct {
 	InstanceID string
 	BindingID  string
-	Details    brokerapi.UnbindDetails
+	Details    domain.UnbindDetails
 }
 
 type UpdateData struct {
 	InstanceID string
-	Details    brokerapi.UpdateDetails
-	Service    brokerapi.Service
-	Plan       brokerapi.ServicePlan
+	Details    domain.UpdateDetails
+	Service    domain.Service
+	Plan       domain.ServicePlan
 	RawParameters json.RawMessage
 }
 

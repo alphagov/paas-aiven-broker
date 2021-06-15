@@ -11,6 +11,8 @@ import (
 	broker_tester "github.com/alphagov/paas-aiven-broker/broker/testing"
 	"github.com/alphagov/paas-aiven-broker/provider/fakes"
 	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -44,14 +46,14 @@ var _ = Describe("Broker API", func() {
 				BasicAuthUsername: username,
 				BasicAuthPassword: password,
 			},
-			Catalog: Catalog{brokerapi.CatalogResponse{
-				Services: []brokerapi.Service{
-					brokerapi.Service{
+			Catalog: Catalog{apiresponses.CatalogResponse{
+				Services: []domain.Service{
+					domain.Service{
 						ID:            service1,
 						Name:          service1,
 						PlanUpdatable: true,
-						Plans: []brokerapi.ServicePlan{
-							brokerapi.ServicePlan{
+						Plans: []domain.ServicePlan{
+							domain.ServicePlan{
 								ID:   plan1,
 								Name: plan1,
 							},
@@ -83,7 +85,7 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Services()
 			Expect(res.Code).To(Equal(http.StatusOK))
 
-			catalogResponse := brokerapi.CatalogResponse{}
+			catalogResponse := apiresponses.CatalogResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &catalogResponse)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -109,11 +111,11 @@ var _ = Describe("Broker API", func() {
 			)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
-			provisioningResponse := brokerapi.ProvisioningResponse{}
+			provisioningResponse := apiresponses.ProvisioningResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &provisioningResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := brokerapi.ProvisioningResponse{
+			expectedResponse := apiresponses.ProvisioningResponse{
 				DashboardURL:  "dashboardURL",
 				OperationData: "operationData",
 			}
@@ -156,11 +158,11 @@ var _ = Describe("Broker API", func() {
 			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
 			Expect(res.Code).To(Equal(http.StatusOK))
 
-			deprovisionResponse := brokerapi.DeprovisionResponse{}
+			deprovisionResponse := apiresponses.DeprovisionResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := brokerapi.DeprovisionResponse{}
+			expectedResponse := apiresponses.DeprovisionResponse{}
 			Expect(deprovisionResponse).To(Equal(expectedResponse))
 		})
 
@@ -183,7 +185,7 @@ var _ = Describe("Broker API", func() {
 		})
 
 		It("creates a binding", func() {
-			fakeProvider.BindReturns(brokerapi.Binding{Credentials: "secrets"}, nil)
+			fakeProvider.BindReturns(domain.Binding{Credentials: "secrets"}, nil)
 			res := brokerTester.Bind(
 				instanceID,
 				bindingID,
@@ -195,18 +197,18 @@ var _ = Describe("Broker API", func() {
 			)
 			Expect(res.Code).To(Equal(http.StatusCreated))
 
-			binding := brokerapi.Binding{}
+			binding := domain.Binding{}
 			err := json.Unmarshal(res.Body.Bytes(), &binding)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedBinding := brokerapi.Binding{
+			expectedBinding := domain.Binding{
 				Credentials: "secrets",
 			}
 			Expect(binding).To(Equal(expectedBinding))
 		})
 
 		It("responds with an internal server error if the provider errors", func() {
-			fakeProvider.BindReturns(brokerapi.Binding{}, errors.New("some binding error"))
+			fakeProvider.BindReturns(domain.Binding{}, errors.New("some binding error"))
 			res := brokerTester.Bind(
 				instanceID,
 				bindingID,
@@ -269,11 +271,11 @@ var _ = Describe("Broker API", func() {
 			)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
-			updateResponse := brokerapi.UpdateResponse{}
+			updateResponse := apiresponses.UpdateResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &updateResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := brokerapi.UpdateResponse{
+			expectedResponse := apiresponses.UpdateResponse{
 				OperationData: "operationData",
 			}
 			Expect(updateResponse).To(Equal(expectedResponse))
@@ -313,16 +315,16 @@ var _ = Describe("Broker API", func() {
 
 	Describe("LastOperation", func() {
 		It("provides the state of the operation", func() {
-			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "description", nil)
+			fakeProvider.LastOperationReturns(domain.Succeeded, "description", nil)
 			res := brokerTester.LastOperation(instanceID, "", "", "")
 			Expect(res.Code).To(Equal(http.StatusOK))
 
-			lastOperationResponse := brokerapi.LastOperationResponse{}
+			lastOperationResponse := apiresponses.LastOperationResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &lastOperationResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := brokerapi.LastOperationResponse{
-				State:       brokerapi.Succeeded,
+			expectedResponse := apiresponses.LastOperationResponse{
+				State:       domain.Succeeded,
 				Description: "description",
 			}
 			Expect(lastOperationResponse).To(Equal(expectedResponse))
@@ -330,15 +332,15 @@ var _ = Describe("Broker API", func() {
 
 		It("responds with an internal server error if the provider errors", func() {
 			lastOperationError := errors.New("some last operation error")
-			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", lastOperationError)
+			fakeProvider.LastOperationReturns(domain.InProgress, "", lastOperationError)
 			res := brokerTester.LastOperation(instanceID, "", "", "")
 			Expect(res.Code).To(Equal(http.StatusInternalServerError))
 
-			lastOperationResponse := brokerapi.LastOperationResponse{}
+			lastOperationResponse := apiresponses.LastOperationResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &lastOperationResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := brokerapi.LastOperationResponse{
+			expectedResponse := apiresponses.LastOperationResponse{
 				State:       "",
 				Description: lastOperationError.Error(),
 			}

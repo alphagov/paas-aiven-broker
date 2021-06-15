@@ -14,7 +14,8 @@ import (
 	"github.com/alphagov/paas-aiven-broker/client/elastic"
 	"github.com/alphagov/paas-aiven-broker/client/influxdb"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
 const AIVEN_BASE_URL string = "https://api.aiven.io"
@@ -59,13 +60,13 @@ func IPAddresses(iplist string)  string {
 	}
 }
 
-func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionData, details brokerapi.ProvisionDetails) (dashboardURL, operationData string, err error) {
+func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionData, details domain.ProvisionDetails) (dashboardURL, operationData string, err error) {
 	plan, err := ap.Config.FindPlan(provisionData.Service.ID, provisionData.Plan.ID)
 	if err != nil {
 		return "", "", err
 	}
 
-	provisionParameters := ProvisionParameters{}
+	provisionParameters := &ProvisionParameters{}
 	if ap.AllowUserProvisionParameters && len(details.RawParameters) > 0 {
 		decoder := json.NewDecoder(bytes.NewReader(details.RawParameters))
 		decoder.DisallowUnknownFields()
@@ -112,14 +113,14 @@ func (ap *AivenProvider) Deprovision(ctx context.Context, deprovisionData Deprov
 
 	if err != nil {
 		if err == aiven.ErrInstanceDoesNotExist {
-			return "", brokerapi.ErrInstanceDoesNotExist
+			return "", apiresponses.ErrInstanceDoesNotExist
 		}
 	}
 
 	return "", err
 }
 
-func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding brokerapi.Binding, err error) {
+func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding domain.Binding, err error) {
 	serviceName := buildServiceName(ap.Config.ServiceNamePrefix, bindData.InstanceID)
 	user := bindData.BindingID
 
@@ -128,14 +129,14 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 		Username:    user,
 	})
 	if err != nil {
-		return brokerapi.Binding{}, err
+		return domain.Binding{}, err
 	}
 
 	service, err := ap.Client.GetService(&aiven.GetServiceInput{
 		ServiceName: serviceName,
 	})
 	if err != nil {
-		return brokerapi.Binding{}, err
+		return domain.Binding{}, err
 	}
 
 	host := service.ServiceUriParams.Host
@@ -143,25 +144,25 @@ func (ap *AivenProvider) Bind(ctx context.Context, bindData BindData) (binding b
 	serviceType := service.ServiceType
 
 	if host == "" || port == "" {
-		return brokerapi.Binding{}, errors.New(
+		return domain.Binding{}, errors.New(
 			"Error getting service connection details: no connection details found in response JSON",
 		)
 	}
 
 	credentials, err := BuildCredentials(serviceType, user, password, host, port)
 	if err != nil {
-		return brokerapi.Binding{}, err
+		return domain.Binding{}, err
 	}
 
 	if err = ensureUserAvailability(ctx, serviceType, credentials); err != nil {
 		// Polling is only a best-effort attempt to work around Aiven API delays.
 		// We therefore continue anyway if it times out.
 		if err != context.DeadlineExceeded {
-			return brokerapi.Binding{}, err
+			return domain.Binding{}, err
 		}
 	}
 
-	return brokerapi.Binding{
+	return domain.Binding{
 		Credentials: credentials,
 	}, nil
 }
@@ -220,13 +221,13 @@ func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err
 	return err
 }
 
-func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, details brokerapi.UpdateDetails) (operationData string, err error) {
+func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, details domain.UpdateDetails) (operationData string, err error) {
 	plan, err := ap.Config.FindPlan(updateData.Details.ServiceID, updateData.Details.PlanID)
 	if err != nil {
 		return "", err
 	}
 
-	UpdateParameters := UpdateParameters{}
+	UpdateParameters := &UpdateParameters{}
 	if ap.AllowUserProvisionParameters && len(details.RawParameters) > 0 {
 		decoder := json.NewDecoder(bytes.NewReader(details.RawParameters))
 		decoder.DisallowUnknownFields()
@@ -254,7 +255,7 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, deta
 
 	switch err := err.(type) {
 	case aiven.ErrInvalidUpdate:
-		return "", brokerapi.NewFailureResponseBuilder(
+		return "", apiresponses.NewFailureResponseBuilder(
 			err,
 			http.StatusUnprocessableEntity,
 			"plan-change-not-supported",
@@ -267,7 +268,7 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, deta
 func (ap *AivenProvider) LastOperation(
 	ctx context.Context,
 	lastOperationData LastOperationData,
-) (state brokerapi.LastOperationState, description string, err error) {
+) (state domain.LastOperationState, description string, err error) {
 	serviceName := buildServiceName(
 		ap.Config.ServiceNamePrefix,
 		lastOperationData.InstanceID,
@@ -285,7 +286,7 @@ func (ap *AivenProvider) LastOperation(
 	updateTime := service.UpdateTime
 
 	if updateTime.After(time.Now().Add(-1 * 60 * time.Second)) {
-		return brokerapi.InProgress, "Preparing to apply update", nil
+		return domain.InProgress, "Preparing to apply update", nil
 	}
 
 	lastOperationState, description := providerStatesMapping(status)
@@ -310,17 +311,17 @@ func buildServiceName(prefix, guid string) string {
 	return strings.ToLower(prefix + "-" + guid)
 }
 
-func providerStatesMapping(status aiven.ServiceStatus) (brokerapi.LastOperationState, string) {
+func providerStatesMapping(status aiven.ServiceStatus) (domain.LastOperationState, string) {
 	switch status {
 	case aiven.Running:
-		return brokerapi.Succeeded, "Last operation succeeded"
+		return domain.Succeeded, "Last operation succeeded"
 	case aiven.Rebuilding:
-		return brokerapi.InProgress, "Rebuilding"
+		return domain.InProgress, "Rebuilding"
 	case aiven.Rebalancing:
-		return brokerapi.InProgress, "Rebalancing"
+		return domain.InProgress, "Rebalancing"
 	case aiven.PowerOff:
-		return brokerapi.Failed, "Last operation failed: service is powered off"
+		return domain.Failed, "Last operation failed: service is powered off"
 	default:
-		return brokerapi.InProgress, fmt.Sprintf("Unknown state: %s", status)
+		return domain.InProgress, fmt.Sprintf("Unknown state: %s", status)
 	}
 }

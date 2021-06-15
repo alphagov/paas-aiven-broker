@@ -6,7 +6,7 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 type Config struct {
@@ -22,12 +22,12 @@ type Catalog struct {
 }
 
 type Service struct {
-	brokerapi.Service
+	domain.Service
 	Plans []Plan `json:"plans"`
 }
 
 type Plan struct {
-	brokerapi.ServicePlan
+	domain.ServicePlan
 	PlanSpecificConfig
 }
 

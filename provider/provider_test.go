@@ -14,11 +14,11 @@ import (
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven/fakes"
-	"github.com/pivotal-cf/brokerapi"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 )
 
 var _ = Describe("Provider", func() {
@@ -44,17 +44,17 @@ var _ = Describe("Provider", func() {
 			Catalog: provider.Catalog{
 				Services: []provider.Service{
 					{
-						Service: brokerapi.Service{ID: "uuid-1"},
+						Service: domain.Service{ID: "uuid-1"},
 						Plans: []provider.Plan{
 							{
-								ServicePlan: brokerapi.ServicePlan{
+								ServicePlan: domain.ServicePlan{
 									ID:   "uuid-2",
 									Name: "elasticsearch",
 								},
 								PlanSpecificConfig: planSpecificConfig1,
 							},
 							{
-								ServicePlan: brokerapi.ServicePlan{
+								ServicePlan: domain.ServicePlan{
 									ID:   "uuid-3",
 									Name: "elasticsearch",
 								},
@@ -76,13 +76,13 @@ var _ = Describe("Provider", func() {
 
 	Describe("Provision", func() {
 		var (
-			provisionDetails  brokerapi.ProvisionDetails
+			provisionDetails  domain.ProvisionDetails
 		)
 		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Service:    brokerapi.Service{ID: "uuid-1", Name: "elasticsearch"},
-				Plan:       brokerapi.ServicePlan{ID: "uuid-2"},
+				Service:    domain.Service{ID: "uuid-1", Name: "elasticsearch"},
+				Plan:       domain.ServicePlan{ID: "uuid-2"},
 				RawParameters: json.RawMessage{},
 			}
 			It("includes ip whitelist", func() {
@@ -214,7 +214,7 @@ var _ = Describe("Provider", func() {
 			fakeAivenClient.DeleteServiceReturnsOnCall(0, aiven.ErrInstanceDoesNotExist)
 
 			_, err := aivenProvider.Deprovision(context.Background(), deprovisionData)
-			Expect(err).To(MatchError(brokerapi.ErrInstanceDoesNotExist))
+			Expect(err).To(MatchError(apiresponses.ErrInstanceDoesNotExist))
 		})
 	})
 
@@ -299,7 +299,7 @@ var _ = Describe("Provider", func() {
 			expectedCreds.Username = testBindingID
 			expectedCreds.Password = stubPassword
 
-			expectedBinding := brokerapi.Binding{Credentials: expectedCreds}
+			expectedBinding := domain.Binding{Credentials: expectedCreds}
 
 			Expect(actualBinding).To(Equal(expectedBinding))
 		})
@@ -395,16 +395,16 @@ var _ = Describe("Provider", func() {
 
 	Describe("Update", func() {
 		var (
-			updateDetails  brokerapi.UpdateDetails
+			updateDetails  domain.UpdateDetails
 		)
 		It("should pass the correct parameters to the Aiven client", func() {
 			os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Details: brokerapi.UpdateDetails{
+				Details: domain.UpdateDetails{
 					ServiceID:      "uuid-1",
 					PlanID:         "uuid-3",
-					PreviousValues: brokerapi.PreviousValues{PlanID: "uuid-2"},
+					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
 				},
 			}
 			updateDetails.RawParameters = nil
@@ -427,10 +427,10 @@ var _ = Describe("Provider", func() {
 			os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Details: brokerapi.UpdateDetails{
+				Details: domain.UpdateDetails{
 					ServiceID:      "uuid-1",
 					PlanID:         "uuid-3",
-					PreviousValues: brokerapi.PreviousValues{PlanID: "uuid-2"},
+					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
 				},
 			}
 			updateDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
@@ -453,10 +453,10 @@ var _ = Describe("Provider", func() {
 		It("should return an error if the client returns error", func() {
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Details: brokerapi.UpdateDetails{
+				Details: domain.UpdateDetails{
 					ServiceID:      "uuid-1",
 					PlanID:         "uuid-3",
-					PreviousValues: brokerapi.PreviousValues{PlanID: "uuid-2"},
+					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
 				},
 			}
 			updateDetails.RawParameters = nil
@@ -471,10 +471,10 @@ var _ = Describe("Provider", func() {
 		It("should returns StatusUnprocessableEntity (422) if the client returns invalid update error", func() {
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Details: brokerapi.UpdateDetails{
+				Details: domain.UpdateDetails{
 					ServiceID:      "uuid-1",
 					PlanID:         "uuid-3",
-					PreviousValues: brokerapi.PreviousValues{PlanID: "uuid-2"},
+					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
 				},
 			}
 			updateDetails.RawParameters = nil
@@ -482,7 +482,7 @@ var _ = Describe("Provider", func() {
 
 			_, err := aivenProvider.Update(context.Background(), updateData, updateDetails)
 
-			expectedErr := brokerapi.NewFailureResponseBuilder(
+			expectedErr := apiresponses.NewFailureResponseBuilder(
 				aiven.ErrInvalidUpdate{"not-valid"},
 				http.StatusUnprocessableEntity,
 				"plan-change-not-supported",
@@ -512,7 +512,7 @@ var _ = Describe("Provider", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceStatusParameters))
-			Expect(actualLastOperationState).To(Equal(brokerapi.Succeeded))
+			Expect(actualLastOperationState).To(Equal(domain.Succeeded))
 			Expect(description).To(Equal("Last operation succeeded"))
 		})
 
@@ -540,7 +540,7 @@ var _ = Describe("Provider", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.GetServiceArgsForCall(0)).To(Equal(expectedGetServiceParameters))
 
-				Expect(actualLastOperationState).To(Equal(brokerapi.InProgress))
+				Expect(actualLastOperationState).To(Equal(domain.InProgress))
 				Expect(description).To(Equal("Preparing to apply update"))
 			})
 		})
@@ -555,7 +555,7 @@ var _ = Describe("Provider", func() {
 			actualLastOperationState, description, err := aivenProvider.LastOperation(context.Background(), lastOperationData)
 
 			Expect(err).To(MatchError("some-error"))
-			Expect(actualLastOperationState).To(Equal(brokerapi.LastOperationState("")))
+			Expect(actualLastOperationState).To(Equal(domain.LastOperationState("")))
 			Expect(description).To(Equal(""))
 		})
 	})

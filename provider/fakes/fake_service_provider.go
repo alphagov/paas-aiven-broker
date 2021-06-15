@@ -54,11 +54,12 @@ type FakeServiceProvider struct {
 		result2 string
 		result3 error
 	}
-	ProvisionStub        func(context.Context, provider.ProvisionData) (string, string, error)
+	ProvisionStub        func(context.Context, provider.ProvisionData, domain.ProvisionDetails) (string, string, error)
 	provisionMutex       sync.RWMutex
 	provisionArgsForCall []struct {
 		arg1 context.Context
 		arg2 provider.ProvisionData
+		arg3 domain.ProvisionDetails
 	}
 	provisionReturns struct {
 		result1 string
@@ -82,11 +83,12 @@ type FakeServiceProvider struct {
 	unbindReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UpdateStub        func(context.Context, provider.UpdateData) (string, error)
+	UpdateStub        func(context.Context, provider.UpdateData, domain.UpdateDetails) (string, error)
 	updateMutex       sync.RWMutex
 	updateArgsForCall []struct {
 		arg1 context.Context
 		arg2 provider.UpdateData
+		arg3 domain.UpdateDetails
 	}
 	updateReturns struct {
 		result1 string
@@ -295,17 +297,18 @@ func (fake *FakeServiceProvider) LastOperationReturnsOnCall(i int, result1 domai
 	}{result1, result2, result3}
 }
 
-func (fake *FakeServiceProvider) Provision(arg1 context.Context, arg2 provider.ProvisionData) (string, string, error) {
+func (fake *FakeServiceProvider) Provision(arg1 context.Context, arg2 provider.ProvisionData, arg3 domain.ProvisionDetails) (string, string, error) {
 	fake.provisionMutex.Lock()
 	ret, specificReturn := fake.provisionReturnsOnCall[len(fake.provisionArgsForCall)]
 	fake.provisionArgsForCall = append(fake.provisionArgsForCall, struct {
 		arg1 context.Context
 		arg2 provider.ProvisionData
-	}{arg1, arg2})
-	fake.recordInvocation("Provision", []interface{}{arg1, arg2})
+		arg3 domain.ProvisionDetails
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Provision", []interface{}{arg1, arg2, arg3})
 	fake.provisionMutex.Unlock()
 	if fake.ProvisionStub != nil {
-		return fake.ProvisionStub(arg1, arg2)
+		return fake.ProvisionStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
@@ -320,17 +323,17 @@ func (fake *FakeServiceProvider) ProvisionCallCount() int {
 	return len(fake.provisionArgsForCall)
 }
 
-func (fake *FakeServiceProvider) ProvisionCalls(stub func(context.Context, provider.ProvisionData) (string, string, error)) {
+func (fake *FakeServiceProvider) ProvisionCalls(stub func(context.Context, provider.ProvisionData, domain.ProvisionDetails) (string, string, error)) {
 	fake.provisionMutex.Lock()
 	defer fake.provisionMutex.Unlock()
 	fake.ProvisionStub = stub
 }
 
-func (fake *FakeServiceProvider) ProvisionArgsForCall(i int) (context.Context, provider.ProvisionData) {
+func (fake *FakeServiceProvider) ProvisionArgsForCall(i int) (context.Context, provider.ProvisionData, domain.ProvisionDetails) {
 	fake.provisionMutex.RLock()
 	defer fake.provisionMutex.RUnlock()
 	argsForCall := fake.provisionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeServiceProvider) ProvisionReturns(result1 string, result2 string, result3 error) {
@@ -423,17 +426,18 @@ func (fake *FakeServiceProvider) UnbindReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeServiceProvider) Update(arg1 context.Context, arg2 provider.UpdateData) (string, error) {
+func (fake *FakeServiceProvider) Update(arg1 context.Context, arg2 provider.UpdateData, arg3 domain.UpdateDetails) (string, error) {
 	fake.updateMutex.Lock()
 	ret, specificReturn := fake.updateReturnsOnCall[len(fake.updateArgsForCall)]
 	fake.updateArgsForCall = append(fake.updateArgsForCall, struct {
 		arg1 context.Context
 		arg2 provider.UpdateData
-	}{arg1, arg2})
-	fake.recordInvocation("Update", []interface{}{arg1, arg2})
+		arg3 domain.UpdateDetails
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("Update", []interface{}{arg1, arg2, arg3})
 	fake.updateMutex.Unlock()
 	if fake.UpdateStub != nil {
-		return fake.UpdateStub(arg1, arg2)
+		return fake.UpdateStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -448,17 +452,17 @@ func (fake *FakeServiceProvider) UpdateCallCount() int {
 	return len(fake.updateArgsForCall)
 }
 
-func (fake *FakeServiceProvider) UpdateCalls(stub func(context.Context, provider.UpdateData) (string, error)) {
+func (fake *FakeServiceProvider) UpdateCalls(stub func(context.Context, provider.UpdateData, domain.UpdateDetails) (string, error)) {
 	fake.updateMutex.Lock()
 	defer fake.updateMutex.Unlock()
 	fake.UpdateStub = stub
 }
 
-func (fake *FakeServiceProvider) UpdateArgsForCall(i int) (context.Context, provider.UpdateData) {
+func (fake *FakeServiceProvider) UpdateArgsForCall(i int) (context.Context, provider.UpdateData, domain.UpdateDetails) {
 	fake.updateMutex.RLock()
 	defer fake.updateMutex.RUnlock()
 	argsForCall := fake.updateArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeServiceProvider) UpdateReturns(result1 string, result2 error) {
