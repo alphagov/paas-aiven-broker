@@ -129,6 +129,29 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
 			})
+			It("includes custom ip whitelist with multiple values", func() {
+				os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
+				provisionDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12,13.14.15.16"}`)
+				_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
+
+				fmt.Sprint(provisionDetails.RawParameters)
+
+				userConfig := aiven.UserConfig{}
+				userConfig.ElasticsearchVersion = "6"
+				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8", "9.10.11.12", "13.14.15.16"}
+
+				expectedParameters := &aiven.CreateServiceInput{
+					Cloud:       "aws-eu-west-1",
+					Plan:        "startup-1",
+					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
+					ServiceType: "elasticsearch",
+					UserConfig:  userConfig,
+				}
+				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
+				os.Unsetenv("IP_WHITELIST")
+			})
 			It("includes custom ip whitelist when global env is not set", func() {
 				os.Unsetenv("IP_WHITELIST")
 				provisionDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
