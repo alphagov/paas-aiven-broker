@@ -5,14 +5,12 @@ import (
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
-
 type ProvisionData struct {
-	InstanceID string
-	Details    domain.ProvisionDetails
-	Service    domain.Service
-	Plan       domain.ServicePlan
+	InstanceID    string
+	Details       domain.ProvisionDetails
+	Service       domain.Service
+	Plan          domain.ServicePlan
 	RawParameters json.RawMessage
-
 }
 
 type DeprovisionData struct {
@@ -35,10 +33,10 @@ type UnbindData struct {
 }
 
 type UpdateData struct {
-	InstanceID string
-	Details    domain.UpdateDetails
-	Service    domain.Service
-	Plan       domain.ServicePlan
+	InstanceID    string
+	Details       domain.UpdateDetails
+	Service       domain.Service
+	Plan          domain.ServicePlan
 	RawParameters json.RawMessage
 }
 
@@ -48,9 +46,9 @@ type LastOperationData struct {
 }
 
 type ProvisionParameters struct {
-	UserIpFilter    string    `json:"ip_filter"`
+	UserIpFilter string `json:"ip_filter"`
 }
 
 type UpdateParameters struct {
-	UserIpFilter    string     `json:"ip_filter"`
+	UserIpFilter string `json:"ip_filter"`
 }

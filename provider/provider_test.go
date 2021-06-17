@@ -67,8 +67,8 @@ var _ = Describe("Provider", func() {
 		}
 		fakeAivenClient = &fakes.FakeClient{}
 		aivenProvider = &provider.AivenProvider{
-			Client: fakeAivenClient,
-			Config: config,
+			Client:                       fakeAivenClient,
+			Config:                       config,
 			AllowUserProvisionParameters: true,
 			AllowUserUpdateParameters:    true,
 		}
@@ -76,13 +76,13 @@ var _ = Describe("Provider", func() {
 
 	Describe("Provision", func() {
 		var (
-			provisionDetails  domain.ProvisionDetails
+			provisionDetails domain.ProvisionDetails
 		)
 		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
-				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
-				Service:    domain.Service{ID: "uuid-1", Name: "elasticsearch"},
-				Plan:       domain.ServicePlan{ID: "uuid-2"},
+				InstanceID:    "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
+				Service:       domain.Service{ID: "uuid-1", Name: "elasticsearch"},
+				Plan:          domain.ServicePlan{ID: "uuid-2"},
 				RawParameters: json.RawMessage{},
 			}
 			It("includes ip whitelist", func() {
@@ -418,7 +418,7 @@ var _ = Describe("Provider", func() {
 
 	Describe("Update", func() {
 		var (
-			updateDetails  domain.UpdateDetails
+			updateDetails domain.UpdateDetails
 		)
 		It("should pass the correct parameters to the Aiven client", func() {
 			os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")

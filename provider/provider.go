@@ -21,8 +21,8 @@ import (
 const AIVEN_BASE_URL string = "https://api.aiven.io"
 
 type AivenProvider struct {
-	Client aiven.Client
-	Config *Config
+	Client                       aiven.Client
+	Config                       *Config
 	AllowUserProvisionParameters bool
 	AllowUserUpdateParameters    bool
 }
@@ -34,17 +34,17 @@ func New(configJSON []byte) (*AivenProvider, error) {
 	}
 	client := aiven.NewHttpClient(AIVEN_BASE_URL, config.APIToken, config.Project)
 	return &AivenProvider{
-		Client: client,
-		Config: config,
+		Client:                       client,
+		Config:                       config,
 		AllowUserProvisionParameters: true,
 		AllowUserUpdateParameters:    true,
 	}, nil
 }
 
-func IPAddresses(iplist string)  string {
+func IPAddresses(iplist string) string {
 	if len(iplist) > 0 {
 		_, ok := os.LookupEnv("IP_WHITELIST")
-		if ! ok {
+		if !ok {
 			return iplist
 		} else {
 			filterList := os.Getenv("IP_WHITELIST") + "," + iplist
@@ -52,7 +52,7 @@ func IPAddresses(iplist string)  string {
 		}
 	}
 	_, ok := os.LookupEnv("IP_WHITELIST")
-	if ! ok {
+	if !ok {
 		return ""
 	} else {
 		filterList := os.Getenv("IP_WHITELIST")
@@ -77,7 +77,7 @@ func (ap *AivenProvider) Provision(ctx context.Context, provisionData ProvisionD
 	userConfig := aiven.UserConfig{}
 
 	addressList := IPAddresses(provisionParameters.UserIpFilter)
-	filterlist ,err := ParseIPWhitelist(addressList)
+	filterlist, err := ParseIPWhitelist(addressList)
 	if err != nil {
 		return "", "", err
 	}
@@ -237,7 +237,7 @@ func (ap *AivenProvider) Update(ctx context.Context, updateData UpdateData, deta
 	userConfig := aiven.UserConfig{}
 
 	addressList := IPAddresses(UpdateParameters.UserIpFilter)
-	filterlist ,err := ParseIPWhitelist(addressList)
+	filterlist, err := ParseIPWhitelist(addressList)
 	if err != nil {
 		return "", err
 	}
