@@ -10,3 +10,8 @@ Describe the steps required to test the changes.
 
 Describe who can review the changes. Or more importantly, list the people
 that can't review, because they worked on it.
+
+---
+
+🚨⚠️ Please do not merge this pull request via the GitHub UI ⚠️🚨
+
