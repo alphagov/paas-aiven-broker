@@ -6,7 +6,7 @@ import (
 	"github.com/alphagov/paas-aiven-broker/provider"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 var _ = Describe("Config", func() {
@@ -54,7 +54,7 @@ var _ = Describe("Config", func() {
 				Catalog: provider.Catalog{
 					Services: []provider.Service{
 						{
-							Service: brokerapi.Service{
+							Service: domain.Service{
 								Name: "elasticsearch",
 							},
 							Plans: []provider.Plan{
@@ -64,7 +64,7 @@ var _ = Describe("Config", func() {
 							},
 						},
 						{
-							Service: brokerapi.Service{
+							Service: domain.Service{
 								Name: "influxdb",
 							},
 							Plans: []provider.Plan{

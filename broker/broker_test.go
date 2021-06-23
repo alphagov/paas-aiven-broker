@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 
 	"code.cloudfoundry.org/lager"
 	. "github.com/alphagov/paas-aiven-broker/broker"
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/alphagov/paas-aiven-broker/provider/fakes"
-	"github.com/pivotal-cf/brokerapi"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -22,43 +22,43 @@ var _ = Describe("Broker", func() {
 		instanceID  string
 		orgGUID     string
 		spaceGUID   string
-		plan1       brokerapi.ServicePlan
-		plan2       brokerapi.ServicePlan
-		service1    brokerapi.Service
+		plan1       domain.ServicePlan
+		plan2       domain.ServicePlan
+		service1    domain.Service
 	)
 
 	BeforeEach(func() {
 		instanceID = "instanceID"
 		orgGUID = "org-guid"
 		spaceGUID = "space-guid"
-		plan1 = brokerapi.ServicePlan{
+		plan1 = domain.ServicePlan{
 			ID:   "plan1",
 			Name: "plan1",
 		}
-		plan2 = brokerapi.ServicePlan{
+		plan2 = domain.ServicePlan{
 			ID:   "plan2",
 			Name: "plan2",
 		}
-		service1 = brokerapi.Service{
+		service1 = domain.Service{
 			ID:            "service1",
 			Name:          "service1",
 			PlanUpdatable: true,
-			Plans:         []brokerapi.ServicePlan{plan1, plan2},
+			Plans:         []domain.ServicePlan{plan1, plan2},
 		}
 		validConfig = Config{
 			Catalog: Catalog{
-				brokerapi.CatalogResponse{
-					Services: []brokerapi.Service{service1},
+				apiresponses.CatalogResponse{
+					Services: []domain.Service{service1},
 				},
 			},
 		}
 	})
 
 	Describe("Provision", func() {
-		var validProvisionDetails brokerapi.ProvisionDetails
+		var validProvisionDetails domain.ProvisionDetails
 
 		BeforeEach(func() {
-			validProvisionDetails = brokerapi.ProvisionDetails{
+			validProvisionDetails = domain.ProvisionDetails{
 				ServiceID:        service1.ID,
 				PlanID:           plan1.ID,
 				OrganizationGUID: orgGUID,
@@ -83,12 +83,12 @@ var _ = Describe("Broker", func() {
 
 			_, err := b.Provision(context.Background(), instanceID, validProvisionDetails, asyncAllowed)
 
-			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
+			Expect(err).To(Equal(apiresponses.ErrAsyncRequired))
 		})
 
 		It("errors if the service is not in the catalog", func() {
 			config := validConfig
-			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
+			config.Catalog = Catalog{Catalog: apiresponses.CatalogResponse{}}
 			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Provision(context.Background(), instanceID, validProvisionDetails, true)
@@ -98,7 +98,7 @@ var _ = Describe("Broker", func() {
 
 		It("errors if the plan is not in the catalog", func() {
 			config := validConfig
-			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
+			config.Catalog.Catalog.Services[0].Plans = []domain.ServicePlan{}
 			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Provision(context.Background(), instanceID, validProvisionDetails, true)
@@ -113,7 +113,7 @@ var _ = Describe("Broker", func() {
 			b.Provision(context.Background(), instanceID, validProvisionDetails, true)
 
 			Expect(fakeProvider.ProvisionCallCount()).To(Equal(1))
-			receivedContext, _ := fakeProvider.ProvisionArgsForCall(0)
+			receivedContext, _, _ := fakeProvider.ProvisionArgsForCall(0)
 
 			_, hasDeadline := receivedContext.Deadline()
 
@@ -127,7 +127,7 @@ var _ = Describe("Broker", func() {
 			b.Provision(context.Background(), instanceID, validProvisionDetails, true)
 
 			Expect(fakeProvider.ProvisionCallCount()).To(Equal(1))
-			_, provisionData := fakeProvider.ProvisionArgsForCall(0)
+			_, provisionData, _ := fakeProvider.ProvisionArgsForCall(0)
 
 			expectedProvisionData := provider.ProvisionData{
 				InstanceID: instanceID,
@@ -166,7 +166,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider.ProvisionReturns("dashboard URL", "operation data", nil)
 
 			Expect(b.Provision(context.Background(), instanceID, validProvisionDetails, true)).
-				To(Equal(brokerapi.ProvisionedServiceSpec{
+				To(Equal(domain.ProvisionedServiceSpec{
 					IsAsync:       true,
 					DashboardURL:  "dashboard URL",
 					OperationData: "operation data",
@@ -175,10 +175,10 @@ var _ = Describe("Broker", func() {
 	})
 
 	Describe("Deprovision", func() {
-		var validDeprovisionDetails brokerapi.DeprovisionDetails
+		var validDeprovisionDetails domain.DeprovisionDetails
 
 		BeforeEach(func() {
-			validDeprovisionDetails = brokerapi.DeprovisionDetails{
+			validDeprovisionDetails = domain.DeprovisionDetails{
 				ServiceID: service1.ID,
 				PlanID:    plan1.ID,
 			}
@@ -197,7 +197,7 @@ var _ = Describe("Broker", func() {
 
 		It("errors if the service is not in the catalog", func() {
 			config := validConfig
-			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
+			config.Catalog = Catalog{Catalog: apiresponses.CatalogResponse{}}
 			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
@@ -207,7 +207,7 @@ var _ = Describe("Broker", func() {
 
 		It("errors if the plan is not in the catalog", func() {
 			config := validConfig
-			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
+			config.Catalog.Catalog.Services[0].Plans = []domain.ServicePlan{}
 			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)
@@ -275,7 +275,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider.DeprovisionReturns("operation data", nil)
 
 			Expect(b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)).
-				To(Equal(brokerapi.DeprovisionServiceSpec{
+				To(Equal(domain.DeprovisionServiceSpec{
 					IsAsync:       false,
 					OperationData: "operation data",
 				}))
@@ -286,17 +286,17 @@ var _ = Describe("Broker", func() {
 		var (
 			bindingID        string
 			appGUID          string
-			bindResource     *brokerapi.BindResource
-			validBindDetails brokerapi.BindDetails
+			bindResource     *domain.BindResource
+			validBindDetails domain.BindDetails
 		)
 
 		BeforeEach(func() {
 			bindingID = "bindingID"
 			appGUID = "appGUID"
-			bindResource = &brokerapi.BindResource{
+			bindResource = &domain.BindResource{
 				AppGuid: appGUID,
 			}
-			validBindDetails = brokerapi.BindDetails{
+			validBindDetails = domain.BindDetails{
 				AppGUID:      appGUID,
 				PlanID:       plan1.ID,
 				ServiceID:    service1.ID,
@@ -350,7 +350,7 @@ var _ = Describe("Broker", func() {
 		It("errors if binding fails", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.BindReturns(brokerapi.Binding{}, errors.New("ERROR BINDING"))
+			fakeProvider.BindReturns(domain.Binding{}, errors.New("ERROR BINDING"))
 
 			_, err := b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)
 
@@ -371,12 +371,12 @@ var _ = Describe("Broker", func() {
 		It("returns the binding", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.BindReturns(brokerapi.Binding{
+			fakeProvider.BindReturns(domain.Binding{
 				Credentials: "some-value-of-interface{}-type",
 			}, nil)
 
 			Expect(b.Bind(context.Background(), instanceID, bindingID, validBindDetails, false)).
-				To(Equal(brokerapi.Binding{
+				To(Equal(domain.Binding{
 					Credentials: "some-value-of-interface{}-type",
 				}))
 		})
@@ -385,12 +385,12 @@ var _ = Describe("Broker", func() {
 	Describe("Unbind", func() {
 		var (
 			bindingID          string
-			validUnbindDetails brokerapi.UnbindDetails
+			validUnbindDetails domain.UnbindDetails
 		)
 
 		BeforeEach(func() {
 			bindingID = "bindingID"
-			validUnbindDetails = brokerapi.UnbindDetails{
+			validUnbindDetails = domain.UnbindDetails{
 				PlanID:    plan1.ID,
 				ServiceID: service1.ID,
 			}
@@ -462,13 +462,13 @@ var _ = Describe("Broker", func() {
 	})
 
 	Describe("Update", func() {
-		var updatePlanDetails brokerapi.UpdateDetails
+		var updatePlanDetails domain.UpdateDetails
 
 		BeforeEach(func() {
-			updatePlanDetails = brokerapi.UpdateDetails{
+			updatePlanDetails = domain.UpdateDetails{
 				ServiceID: service1.ID,
 				PlanID:    plan2.ID,
-				PreviousValues: brokerapi.PreviousValues{
+				PreviousValues: domain.PreviousValues{
 					ServiceID: service1.ID,
 					PlanID:    plan1.ID,
 					OrgID:     orgGUID,
@@ -479,16 +479,16 @@ var _ = Describe("Broker", func() {
 
 		Describe("Updatability", func() {
 			Context("when the plan is not updatable", func() {
-				var updateParametersDetails brokerapi.UpdateDetails
+				var updateParametersDetails domain.UpdateDetails
 
 				BeforeEach(func() {
 					validConfig.Catalog.Catalog.Services[0].PlanUpdatable = false
 
-					updateParametersDetails = brokerapi.UpdateDetails{
+					updateParametersDetails = domain.UpdateDetails{
 						ServiceID:     service1.ID,
 						PlanID:        plan1.ID,
 						RawParameters: json.RawMessage(`{"new":"parameter"}`),
-						PreviousValues: brokerapi.PreviousValues{
+						PreviousValues: domain.PreviousValues{
 							ServiceID: service1.ID,
 							PlanID:    plan1.ID,
 							OrgID:     orgGUID,
@@ -503,7 +503,7 @@ var _ = Describe("Broker", func() {
 					Expect(updatePlanDetails.PlanID).NotTo(Equal(updatePlanDetails.PreviousValues.PlanID))
 					_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
 
-					Expect(err).To(Equal(brokerapi.ErrPlanChangeNotSupported))
+					Expect(err).To(Equal(apiresponses.ErrPlanChangeNotSupported))
 				})
 
 				It("accepts the update request when just changing parameters", func() {
@@ -534,12 +534,12 @@ var _ = Describe("Broker", func() {
 
 			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, asyncAllowed)
 
-			Expect(err).To(Equal(brokerapi.ErrAsyncRequired))
+			Expect(err).To(Equal(apiresponses.ErrAsyncRequired))
 		})
 
 		It("errors if the service is not in the catalog", func() {
 			config := validConfig
-			config.Catalog = Catalog{Catalog: brokerapi.CatalogResponse{}}
+			config.Catalog = Catalog{Catalog: apiresponses.CatalogResponse{}}
 			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
@@ -549,7 +549,7 @@ var _ = Describe("Broker", func() {
 
 		It("errors if the plan is not in the catalog", func() {
 			config := validConfig
-			config.Catalog.Catalog.Services[0].Plans = []brokerapi.ServicePlan{}
+			config.Catalog.Catalog.Services[0].Plans = []domain.ServicePlan{}
 			b := New(config, &fakes.FakeServiceProvider{}, lager.NewLogger("broker"))
 
 			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
@@ -564,7 +564,7 @@ var _ = Describe("Broker", func() {
 			b.Update(context.Background(), instanceID, updatePlanDetails, true)
 
 			Expect(fakeProvider.UpdateCallCount()).To(Equal(1))
-			receivedContext, _ := fakeProvider.UpdateArgsForCall(0)
+			receivedContext, _, _ := fakeProvider.UpdateArgsForCall(0)
 
 			_, hasDeadline := receivedContext.Deadline()
 
@@ -578,7 +578,7 @@ var _ = Describe("Broker", func() {
 			b.Update(context.Background(), instanceID, updatePlanDetails, true)
 
 			Expect(fakeProvider.UpdateCallCount()).To(Equal(1))
-			_, updateData := fakeProvider.UpdateArgsForCall(0)
+			_, updateData, _ := fakeProvider.UpdateArgsForCall(0)
 
 			expectedUpdateData := provider.UpdateData{
 				InstanceID: instanceID,
@@ -617,7 +617,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider.UpdateReturns("operation data", nil)
 
 			Expect(b.Update(context.Background(), instanceID, updatePlanDetails, true)).
-				To(Equal(brokerapi.UpdateServiceSpec{
+				To(Equal(domain.UpdateServiceSpec{
 					IsAsync:       true,
 					OperationData: "operation data",
 				}))
@@ -637,7 +637,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
+			b.LastOperation(context.Background(), instanceID, domain.PollDetails{OperationData: operationData})
 
 			Expect(log).To(gbytes.Say("last-operation-start"))
 		})
@@ -646,7 +646,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
+			b.LastOperation(context.Background(), instanceID, domain.PollDetails{OperationData: operationData})
 
 			Expect(fakeProvider.LastOperationCallCount()).To(Equal(1))
 			receivedContext, _ := fakeProvider.LastOperationArgsForCall(0)
@@ -660,7 +660,7 @@ var _ = Describe("Broker", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
 
-			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
+			b.LastOperation(context.Background(), instanceID, domain.PollDetails{OperationData: operationData})
 
 			Expect(fakeProvider.LastOperationCallCount()).To(Equal(1))
 			_, lastOperationData := fakeProvider.LastOperationArgsForCall(0)
@@ -676,9 +676,9 @@ var _ = Describe("Broker", func() {
 		It("errors if last operation fails", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.LastOperationReturns(brokerapi.InProgress, "", errors.New("ERROR LAST OPERATION"))
+			fakeProvider.LastOperationReturns(domain.InProgress, "", errors.New("ERROR LAST OPERATION"))
 
-			_, err := b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
+			_, err := b.LastOperation(context.Background(), instanceID, domain.PollDetails{OperationData: operationData})
 
 			Expect(err).To(MatchError("ERROR LAST OPERATION"))
 		})
@@ -689,7 +689,7 @@ var _ = Describe("Broker", func() {
 			logger.RegisterSink(lager.NewWriterSink(log, lager.DEBUG))
 			b := New(validConfig, &fakes.FakeServiceProvider{}, logger)
 
-			b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})
+			b.LastOperation(context.Background(), instanceID, domain.PollDetails{OperationData: operationData})
 
 			Expect(log).To(gbytes.Say("last-operation-success"))
 		})
@@ -697,11 +697,11 @@ var _ = Describe("Broker", func() {
 		It("returns the last operation status", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.LastOperationReturns(brokerapi.Succeeded, "Provision successful", nil)
+			fakeProvider.LastOperationReturns(domain.Succeeded, "Provision successful", nil)
 
-			Expect(b.LastOperation(context.Background(), instanceID, brokerapi.PollDetails{OperationData: operationData})).
-				To(Equal(brokerapi.LastOperation{
-					State:       brokerapi.Succeeded,
+			Expect(b.LastOperation(context.Background(), instanceID, domain.PollDetails{OperationData: operationData})).
+				To(Equal(domain.LastOperation{
+					State:       domain.Succeeded,
 					Description: "Provision successful",
 				}))
 		})

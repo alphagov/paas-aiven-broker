@@ -1,13 +1,14 @@
 package broker
 
 import (
+	"github.com/pivotal-cf/brokerapi/domain"
 	"net/http"
 
 	"code.cloudfoundry.org/lager"
 	"github.com/pivotal-cf/brokerapi"
 )
 
-func NewAPI(broker brokerapi.ServiceBroker, logger lager.Logger, config Config) http.Handler {
+func NewAPI(broker domain.ServiceBroker, logger lager.Logger, config Config) http.Handler {
 	credentials := brokerapi.BrokerCredentials{
 		Username: config.API.BasicAuthUsername,
 		Password: config.API.BasicAuthPassword,
