@@ -1,0 +1,24 @@
+name: Go
+on: [push, pull_request]
+env:
+  GO_VERSION: 1.17
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: "Install Go ${{env.GO_VERSION}}"
+        uses: actions/setup-go@v2
+        with:
+          go-version: "${{env.GO_VERSION}}"
+
+      - name: Install Ginkgo CLI
+        run: |
+          go install github.com/onsi/ginkgo/ginkgo@latest
+      - name: Run tests
+        run: |
+          make unit
