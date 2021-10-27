@@ -2,6 +2,7 @@ package provider
 
 import (
 	"encoding/json"
+
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
@@ -46,9 +47,15 @@ type LastOperationData struct {
 }
 
 type ProvisionParameters struct {
-	UserIpFilter string `json:"ip_filter"`
+	UserIpFilter                  string  `json:"ip_filter"`
+	RestoreFromLatestBackupOf     *string `json:"restore_from_latest_backup_of"`
+	RestoreFromLatestBackupBefore *string `json:"restore_from_latest_backup_before"`
 }
 
 type UpdateParameters struct {
 	UserIpFilter string `json:"ip_filter"`
+}
+
+func (pp *ProvisionParameters) Validate() error {
+	return nil
 }

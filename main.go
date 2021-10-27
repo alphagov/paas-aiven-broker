@@ -31,13 +31,13 @@ func main() {
 		log.Fatalf("Error validating config file: %v\n", err)
 	}
 
-	aivenProvider, err := provider.New(config.Provider)
+	logger := lager.NewLogger("aiven-service-broker")
+	logger.RegisterSink(lager.NewWriterSink(os.Stdout, config.API.LagerLogLevel))
+
+	aivenProvider, err := provider.New(config.Provider, logger)
 	if err != nil {
 		log.Fatalf("Error creating Aiven provider: %v\n", err)
 	}
-
-	logger := lager.NewLogger("aiven-service-broker")
-	logger.RegisterSink(lager.NewWriterSink(os.Stdout, config.API.LagerLogLevel))
 
 	aivenBroker := broker.New(config, aivenProvider, logger)
 	brokerServer := broker.NewAPI(aivenBroker, logger, config)

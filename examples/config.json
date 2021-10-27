@@ -1,4 +1,6 @@
 {
+        "name": "aiven-broker",
+        "deploy_env": "test-env",
         "basic_auth_username": "username",
         "basic_auth_password": "password",
         "log_level": "info",

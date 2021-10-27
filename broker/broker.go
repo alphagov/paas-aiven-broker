@@ -77,7 +77,7 @@ func (b *Broker) Provision(
 		Plan:       plan,
 	}
 
-	dashboardURL, operationData, err := b.Provider.Provision(providerCtx, provisionData, details)
+	operationData, err := b.Provider.Provision(providerCtx, provisionData, true)
 	if err != nil {
 		return domain.ProvisionedServiceSpec{}, err
 	}
@@ -88,11 +88,7 @@ func (b *Broker) Provision(
 		"async-allowed": asyncAllowed,
 	})
 
-	return domain.ProvisionedServiceSpec{
-		IsAsync:       asyncAllowed,
-		DashboardURL:  dashboardURL,
-		OperationData: operationData,
-	}, nil
+	return operationData, nil
 }
 
 func (b *Broker) Deprovision(
@@ -143,7 +139,7 @@ func (b *Broker) Deprovision(
 	})
 
 	return domain.DeprovisionServiceSpec{
-		IsAsync:       false,
+		IsAsync:       asyncAllowed,
 		OperationData: operationData,
 	}, nil
 }
@@ -258,7 +254,7 @@ func (b *Broker) Update(
 		Plan:       plan,
 	}
 
-	operationData, err := b.Provider.Update(providerCtx, updateData, details)
+	updateServiceSpec, err := b.Provider.Update(providerCtx, updateData, asyncAllowed)
 	if err != nil {
 		return domain.UpdateServiceSpec{}, err
 	}
@@ -269,10 +265,7 @@ func (b *Broker) Update(
 		"async-allowed": asyncAllowed,
 	})
 
-	return domain.UpdateServiceSpec{
-		IsAsync:       asyncAllowed,
-		OperationData: operationData,
-	}, nil
+	return updateServiceSpec, nil
 }
 
 func (b *Broker) LastOperation(

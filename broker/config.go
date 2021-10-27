@@ -44,8 +44,13 @@ func NewConfig(source io.Reader) (Config, error) {
 	if ok {
 		api.BasicAuthPassword = basicAuthPassword
 	}
-	if api.Port == "" {
-		api.Port = "3000"
+	port, ok := os.LookupEnv("PORT")
+	if ok {
+		api.Port = port
+	} else {
+		if api.Port == "" {
+			api.Port = DefaultPort
+		}
 	}
 	if api.LogLevel == "" {
 		api.LogLevel = "debug"
