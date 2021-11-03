@@ -48,12 +48,12 @@ var _ = Describe("Broker API", func() {
 			},
 			Catalog: Catalog{apiresponses.CatalogResponse{
 				Services: []domain.Service{
-					domain.Service{
+					{
 						ID:            service1,
 						Name:          service1,
 						PlanUpdatable: true,
 						Plans: []domain.ServicePlan{
-							domain.ServicePlan{
+							{
 								ID:   plan1,
 								Name: plan1,
 							},
@@ -98,7 +98,7 @@ var _ = Describe("Broker API", func() {
 
 	Describe("Provision", func() {
 		It("accepts a provision request", func() {
-			fakeProvider.ProvisionReturns("dashboardURL", "operationData", nil)
+			fakeProvider.ProvisionReturns(domain.ProvisionedServiceSpec{IsAsync: true}, nil)
 			res := brokerTester.Provision(
 				instanceID,
 				broker_tester.RequestBody{
@@ -115,15 +115,12 @@ var _ = Describe("Broker API", func() {
 			err := json.Unmarshal(res.Body.Bytes(), &provisioningResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := apiresponses.ProvisioningResponse{
-				DashboardURL:  "dashboardURL",
-				OperationData: "operationData",
-			}
+			expectedResponse := apiresponses.ProvisioningResponse{}
 			Expect(provisioningResponse).To(Equal(expectedResponse))
 		})
 
 		It("responds with an internal server error if the provider errors", func() {
-			fakeProvider.ProvisionReturns("", "", errors.New("some provisioning error"))
+			fakeProvider.ProvisionReturns(domain.ProvisionedServiceSpec{}, errors.New("some provisioning error"))
 			res := brokerTester.Provision(
 				instanceID,
 				broker_tester.RequestBody{
@@ -156,13 +153,13 @@ var _ = Describe("Broker API", func() {
 		It("accepts a deprovision request", func() {
 			fakeProvider.DeprovisionReturns("operationData", nil)
 			res := brokerTester.Deprovision(instanceID, service1, plan1, true)
-			Expect(res.Code).To(Equal(http.StatusOK))
+			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			deprovisionResponse := apiresponses.DeprovisionResponse{}
 			err := json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
 			Expect(err).NotTo(HaveOccurred())
 
-			expectedResponse := apiresponses.DeprovisionResponse{}
+			expectedResponse := apiresponses.DeprovisionResponse{OperationData: "operationData"}
 			Expect(deprovisionResponse).To(Equal(expectedResponse))
 		})
 
@@ -257,7 +254,7 @@ var _ = Describe("Broker API", func() {
 
 	Describe("Update", func() {
 		It("accepts an update request", func() {
-			fakeProvider.UpdateReturns("operationData", nil)
+			fakeProvider.UpdateReturns(domain.UpdateServiceSpec{OperationData: "operationData", IsAsync: true}, nil)
 			res := brokerTester.Update(
 				instanceID,
 				broker_tester.RequestBody{
@@ -282,7 +279,7 @@ var _ = Describe("Broker API", func() {
 		})
 
 		It("responds with an internal server error if the provider errors", func() {
-			fakeProvider.UpdateReturns("", errors.New("some update error"))
+			fakeProvider.UpdateReturns(domain.UpdateServiceSpec{OperationData: "operationData"}, errors.New("some update error"))
 			res := brokerTester.Update(
 				instanceID,
 				broker_tester.RequestBody{

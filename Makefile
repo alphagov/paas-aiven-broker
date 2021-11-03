@@ -7,6 +7,7 @@ integration:
 	ginkgo -p -nodes 4 ci/integration
 
 unit: export DEPLOY_ENV=test
+unit: export BROKER_NAME=test
 unit: export AIVEN_API_TOKEN=token
 unit: export AIVEN_PROJECT=project
 unit:

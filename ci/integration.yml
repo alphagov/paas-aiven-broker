@@ -16,8 +16,10 @@ run:
     - -e
     - -c
     - |
-      SERVICE_NAME_PREFIX=test
-      export SERVICE_NAME_PREFIX
+      DEPLOY_ENV=test
+      export DEPLOY_ENV
+      BROKER_NAME=test-broker
+      export BROKER_NAME
       AIVEN_USERNAME=foo
       export AIVEN_USERNAME
       AIVEN_PASSWORD=bar

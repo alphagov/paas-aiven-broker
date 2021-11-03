@@ -13,7 +13,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	broker "github.com/alphagov/paas-aiven-broker/broker"
 	brokertesting "github.com/alphagov/paas-aiven-broker/broker/testing"
-	"github.com/alphagov/paas-aiven-broker/client/elastic"
+	"github.com/alphagov/paas-aiven-broker/client/elasticsearch"
 	"github.com/alphagov/paas-aiven-broker/client/opensearch"
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
@@ -28,9 +28,16 @@ const (
 	asyncAllowed                 = true
 	defaultTimeout time.Duration = 15 * time.Minute
 
+	orgGUID   = "test-org-guid"
+	spaceGUID = "test-space-guid"
+
 	elasticsearchServiceGUID     = "uuid-elasticsearch-service"
 	elasticsearchInitialPlanGUID = "uuid-basic-elasticsearch-7"
 	elasticsearchUpgradePlanGUID = "uuid-supra-elasticsearch-7"
+
+	openSearchServiceGUID     = "uuid-opensearch-service"
+	openSearchInitialPlanGUID = "uuid-basic-opensearch-1"
+	openSearchUpgradePlanGUID = "uuid-supra-opensearch-1"
 
 	influxDBServiceGUID = "uuid-influxdb-service"
 	influxDBPlanGUID    = "uuid-basic-influxdb-1"
@@ -42,6 +49,7 @@ type BindingResponse struct {
 
 var _ = Describe("Broker", func() {
 	configJSON := fmt.Sprintf(`{
+		"name": "aiven-broker",
 		"catalog": {
 			"services": [{
 				"id": "%s",
@@ -58,7 +66,24 @@ var _ = Describe("Broker", func() {
 					"aiven_plan": "startup-8",
 					"elasticsearch_version": "7"
 				}]
-			}, {
+			},
+			{
+				"id": "%s",
+				"name": "opensearch",
+				"plan_updateable": true,
+				"plans": [{
+					"id": "%s",
+					"name": "basic-7",
+					"aiven_plan": "startup-4",
+					"opensearch_version": "1"
+				}, {
+					"id": "%s",
+					"name": "supra-7",
+					"aiven_plan": "startup-8",
+					"opensearch_version": "1"
+				}]
+			},
+			{
 				"id": "%s",
 				"name": "influxdb",
 				"plan_updateable": true,
@@ -73,29 +98,38 @@ var _ = Describe("Broker", func() {
 		elasticsearchServiceGUID,
 		elasticsearchInitialPlanGUID, elasticsearchUpgradePlanGUID,
 
+		openSearchServiceGUID,
+		openSearchInitialPlanGUID, openSearchUpgradePlanGUID,
+
 		influxDBServiceGUID,
 		influxDBPlanGUID,
 	)
 
 	var (
-		instanceID   string
-		bindingID    string
-		brokerTester brokertesting.BrokerTester
+		instanceID     string
+		forkinstanceID string
+		bindingID      string
+		forkBindingID  string
+		aivenProvider  *provider.AivenProvider
+		brokerTester   brokertesting.BrokerTester
 	)
 
 	BeforeEach(func() {
 		instanceID = uuid.NewV4().String()
+		forkinstanceID = uuid.NewV4().String()
 		bindingID = uuid.NewV4().String()
+		forkBindingID = uuid.NewV4().String()
 
 		By("initializing")
 		brokerConfig, err := broker.NewConfig(strings.NewReader(configJSON))
 		Expect(err).ToNot(HaveOccurred())
 
-		aivenProvider, err := provider.New(brokerConfig.Provider)
-		Expect(err).ToNot(HaveOccurred())
-
 		logger := lager.NewLogger("AivenServiceBroker")
 		logger.RegisterSink(lager.NewWriterSink(os.Stdout, brokerConfig.API.LagerLogLevel))
+
+		aivenProvider, err = provider.New(brokerConfig.Provider, logger)
+		Expect(err).ToNot(HaveOccurred())
+
 		aivenBroker := broker.New(brokerConfig, aivenProvider, logger)
 
 		brokerServer := broker.NewAPI(aivenBroker, logger, brokerConfig)
@@ -119,6 +153,12 @@ var _ = Describe("Broker", func() {
 				elasticsearchInitialPlanGUID,
 				asyncAllowed,
 			)
+			_ = brokerTester.Deprovision(
+				forkinstanceID,
+				openSearchServiceGUID,
+				openSearchInitialPlanGUID,
+				asyncAllowed,
+			)
 		})
 
 		It("should manage the lifecycle of an Elasticsearch cluster", func() {
@@ -130,21 +170,25 @@ var _ = Describe("Broker", func() {
 
 			By("Provisioning")
 			res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
-				ServiceID: elasticsearchServiceGUID,
-				PlanID:    elasticsearchInitialPlanGUID,
+				ServiceID:        elasticsearchServiceGUID,
+				PlanID:           elasticsearchInitialPlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
 			}, asyncAllowed)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", brokerapi.LastOperationResponse{
+			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
 				State:       brokerapi.Succeeded,
 				Description: "Last operation succeeded",
 			})
 
 			By("Binding")
 			res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID: elasticsearchServiceGUID,
-				PlanID:    elasticsearchInitialPlanGUID,
+				ServiceID:        elasticsearchServiceGUID,
+				PlanID:           elasticsearchInitialPlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
 			})
 			Expect(res.Code).To(Equal(http.StatusCreated))
 
@@ -160,7 +204,7 @@ var _ = Describe("Broker", func() {
 			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("username", BeAssignableToTypeOf(str)))
 			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("password", BeAssignableToTypeOf(str)))
 
-			elasticsearchClient := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
+			elasticsearchClient := elasticsearch.New(parsedResponse.Credentials["uri"].(string), nil)
 
 			By("ensuring credentials allow writing data")
 			putURI := elasticsearchClient.URI + "/twitter/tweet/1?op_type=create"
@@ -183,17 +227,19 @@ var _ = Describe("Broker", func() {
 			Expect(body).To(ContainSubstring(putData))
 
 			By("polling for backup completion before updating")
-			pollForBackupCompletion(instanceID)
+			pollForBackupCompletion(instanceID, aivenProvider)
 
 			By("updating")
 			res = brokerTester.Update(instanceID, brokertesting.RequestBody{
-				ServiceID: elasticsearchServiceGUID,
-				PlanID:    elasticsearchUpgradePlanGUID,
+				ServiceID:        elasticsearchServiceGUID,
+				PlanID:           elasticsearchUpgradePlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
 			}, asyncAllowed)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", brokerapi.LastOperationResponse{
+			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
 				State:       brokerapi.Succeeded,
 				Description: "Last operation succeeded",
 			})
@@ -205,8 +251,10 @@ var _ = Describe("Broker", func() {
 
 			By("Unbinding")
 			res = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID: elasticsearchServiceGUID,
-				PlanID:    elasticsearchUpgradePlanGUID,
+				ServiceID:        elasticsearchServiceGUID,
+				PlanID:           elasticsearchUpgradePlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
 			})
 			Expect(res.Code).To(Equal(http.StatusOK))
 
@@ -340,21 +388,25 @@ var _ = Describe("Broker", func() {
 			By("Provisioning")
 
 			res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
-				ServiceID: elasticsearchServiceGUID,
-				PlanID:    elasticsearchInitialPlanGUID,
+				ServiceID:        elasticsearchServiceGUID,
+				PlanID:           elasticsearchInitialPlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
 			}, asyncAllowed)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
 
 			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", brokerapi.LastOperationResponse{
+			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
 				State:       brokerapi.Succeeded,
 				Description: "Last operation succeeded",
 			})
 
 			By("Binding")
 			res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID: elasticsearchServiceGUID,
-				PlanID:    elasticsearchInitialPlanGUID,
+				ServiceID:        elasticsearchServiceGUID,
+				PlanID:           elasticsearchInitialPlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
 			})
 			Expect(res.Code).To(Equal(http.StatusCreated))
 
@@ -362,7 +414,7 @@ var _ = Describe("Broker", func() {
 			err := json.NewDecoder(res.Body).Decode(&parsedResponse)
 			Expect(err).ToNot(HaveOccurred())
 
-			elasticsearchClient := elastic.New(parsedResponse.Credentials["uri"].(string), nil)
+			elasticsearchClient := elasticsearch.New(parsedResponse.Credentials["uri"].(string), nil)
 
 			By("Ensuring we can't reach the provisioned service")
 			getURI := elasticsearchClient.URI + "/"
@@ -582,7 +634,7 @@ var _ = Describe("Broker", func() {
 			pollForCompletion(
 				brokerTester,
 				instanceID, "",
-				brokerapi.LastOperationResponse{
+				apiresponses.LastOperationResponse{
 					State:       brokerapi.Succeeded,
 					Description: "Last operation succeeded",
 				},
@@ -698,10 +750,10 @@ var _ = Describe("Broker", func() {
 	})
 })
 
-func pollForCompletion(bt brokertesting.BrokerTester, instanceID, operationData string, expectedResponse brokerapi.LastOperationResponse) {
+func pollForCompletion(bt brokertesting.BrokerTester, instanceID, operationData string, expectedResponse apiresponses.LastOperationResponse) {
 	Eventually(
-		func() brokerapi.LastOperationResponse {
-			lastOperationResponse := brokerapi.LastOperationResponse{}
+		func() apiresponses.LastOperationResponse {
+			lastOperationResponse := apiresponses.LastOperationResponse{}
 			res := bt.LastOperation(instanceID, "", "", operationData)
 			if res.Code != http.StatusOK {
 				return lastOperationResponse
@@ -714,7 +766,7 @@ func pollForCompletion(bt brokertesting.BrokerTester, instanceID, operationData 
 	).Should(Equal(expectedResponse))
 }
 
-func pollForBackupCompletion(instanceID string) {
+func pollForBackupCompletion(instanceID string, provider *provider.AivenProvider) {
 	Eventually(
 		func() bool {
 			type getServiceResponse struct {
@@ -722,8 +774,7 @@ func pollForBackupCompletion(instanceID string) {
 					Backups []interface{} `json:"backups"`
 				} `json:"service"`
 			}
-
-			serviceName := os.Getenv("SERVICE_NAME_PREFIX") + "-" + instanceID
+			serviceName := provider.BuildServiceName(instanceID)
 			req, err := http.NewRequest("GET", fmt.Sprintf(
 				"https://api.aiven.io/v1beta/project/%s/service/%s",
 				os.Getenv("AIVEN_PROJECT"),
@@ -754,7 +805,7 @@ func pollForBackupCompletion(instanceID string) {
 			}
 			return false
 		},
-		5*time.Minute,
+		10*time.Minute,
 		30*time.Second,
 	).Should(BeTrue())
 }

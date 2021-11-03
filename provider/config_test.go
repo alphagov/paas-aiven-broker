@@ -61,6 +61,7 @@ var _ = Describe("Config", func() {
 			expectedConfig := &provider.Config{
 				Cloud:             "aws-eu-west-1",
 				DeployEnv:         "test",
+				BrokerName:        "test",
 				ServiceNamePrefix: "test",
 				APIToken:          "token",
 				Project:           "project",

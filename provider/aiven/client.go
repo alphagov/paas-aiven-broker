@@ -100,7 +100,6 @@ type Service struct {
 	ServiceUriParams ServiceUriParams `json:"service_uri_params"`
 	ServiceType      string           `json:"service_type"`
 	Backups          []ServiceBackup  `json:"backups"`
-	Tags             ServiceTags      `json:"tags"`
 	Plan             string           `json:"plan"`
 }
 

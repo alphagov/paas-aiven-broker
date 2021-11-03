@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 
@@ -142,7 +143,7 @@ var _ = Describe("Broker", func() {
 		It("errors if provisioning fails", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.ProvisionReturns("", "", errors.New("ERROR PROVISIONING"))
+			fakeProvider.ProvisionReturns(domain.ProvisionedServiceSpec{}, errors.New("ERROR PROVISIONING"))
 
 			_, err := b.Provision(context.Background(), instanceID, validProvisionDetails, true)
 
@@ -163,14 +164,14 @@ var _ = Describe("Broker", func() {
 		It("returns the provisioned service spec", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.ProvisionReturns("dashboard URL", "operation data", nil)
-
-			Expect(b.Provision(context.Background(), instanceID, validProvisionDetails, true)).
-				To(Equal(domain.ProvisionedServiceSpec{
-					IsAsync:       true,
-					DashboardURL:  "dashboard URL",
-					OperationData: "operation data",
-				}))
+			fakeProvider.ProvisionReturns(domain.ProvisionedServiceSpec{
+				IsAsync: true,
+			}, nil)
+			response, err := b.Provision(context.Background(), instanceID, validProvisionDetails, true)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(response).To(Equal(domain.ProvisionedServiceSpec{
+				IsAsync: true,
+			}))
 		})
 	})
 
@@ -276,7 +277,7 @@ var _ = Describe("Broker", func() {
 
 			Expect(b.Deprovision(context.Background(), instanceID, validDeprovisionDetails, true)).
 				To(Equal(domain.DeprovisionServiceSpec{
-					IsAsync:       false,
+					IsAsync:       true,
 					OperationData: "operation data",
 				}))
 		})
@@ -593,7 +594,7 @@ var _ = Describe("Broker", func() {
 		It("errors if update fails", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.UpdateReturns("", errors.New("ERROR UPDATING"))
+			fakeProvider.UpdateReturns(domain.UpdateServiceSpec{OperationData: "operationData"}, errors.New("ERROR UPDATING"))
 
 			_, err := b.Update(context.Background(), instanceID, updatePlanDetails, true)
 
@@ -614,7 +615,7 @@ var _ = Describe("Broker", func() {
 		It("returns the update service spec", func() {
 			fakeProvider := &fakes.FakeServiceProvider{}
 			b := New(validConfig, fakeProvider, lager.NewLogger("broker"))
-			fakeProvider.UpdateReturns("operation data", nil)
+			fakeProvider.UpdateReturns(domain.UpdateServiceSpec{OperationData: "operation data", IsAsync: true}, nil)
 
 			Expect(b.Update(context.Background(), instanceID, updatePlanDetails, true)).
 				To(Equal(domain.UpdateServiceSpec{

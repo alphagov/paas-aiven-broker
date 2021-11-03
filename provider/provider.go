@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -426,6 +427,9 @@ func (ap *AivenProvider) forkFromBackup(
 		return err
 	}
 	backups := sourceService.Backups
+	sort.SliceStable(backups, func(i, j int) bool {
+		return backups[i].Time.After(backups[j].Time)
+	})
 
 	if provisionParameters.RestoreFromLatestBackupBefore != nil {
 		if *provisionParameters.RestoreFromLatestBackupBefore == "" {

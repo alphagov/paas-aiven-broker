@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -69,12 +70,11 @@ var _ = Describe("Provider", func() {
 			},
 		}
 		fakeAivenClient = &fakes.FakeClient{}
-		fakeAivenClient.GetServiceReturns(&aiven.Service{
-			Tags: aiven.ServiceTags{
-				PlanID: "olduuid",
-			},
-		}, nil)
+		fakeAivenClient.GetServiceReturns(&aiven.Service{}, nil)
 
+		fakeAivenClient.GetServiceTagsReturns(&aiven.ServiceTags{
+			PlanID: "olduuid",
+		}, nil)
 		logger := lager.NewLogger("provider")
 		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		aivenProvider = &provider.AivenProvider{
@@ -258,36 +258,72 @@ var _ = Describe("Provider", func() {
 			})
 			Context("when copying from an existing service", func() {
 				var getServiceReturnData aiven.Service
+				var getServiceTagsReturnData aiven.ServiceTags
 				BeforeEach(func() {
 					provisionData.Details.RawParameters = json.RawMessage(`{"restore_from_latest_backup_of": "source-service-name"}`)
-
 					getServiceReturnData = aiven.Service{
 						ServiceType: "elasticsearch",
-						Tags: aiven.ServiceTags{
-							OrganizationID: provisionData.Details.OrganizationGUID,
-							SpaceID:        provisionData.Details.SpaceGUID,
-							PlanID:         provisionData.Plan.ID,
-						},
 						Backups: []aiven.ServiceBackup{
-							{
-								Name: "second backup",
-								Time: time.Now().Add(-time.Hour),
-								Size: 123,
-							},
 							{
 								Name: "first backup",
 								Time: time.Now().Add(-time.Hour * 2),
 								Size: 123,
 							},
+							{
+								Name: "second backup",
+								Time: time.Now().Add(-time.Hour),
+								Size: 123,
+							},
 						},
+					}
+					getServiceTagsReturnData = aiven.ServiceTags{
+						OrganizationID: provisionData.Details.OrganizationGUID,
+						SpaceID:        provisionData.Details.SpaceGUID,
+						PlanID:         provisionData.Plan.ID,
 					}
 				})
 				It("should error if no backups exist for the source service", func() {
 					getServiceReturnData.Backups = []aiven.ServiceBackup{}
 					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					fakeAivenClient.GetServiceTagsReturns(&getServiceTagsReturnData, nil)
 					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(Equal(fmt.Errorf("No backups found for 'source-service-name'")))
+				})
+				It("should get the latest backup", func() {
+					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					fakeAivenClient.GetServiceTagsReturns(&getServiceTagsReturnData, nil)
+					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeAivenClient.ForkServiceCallCount()).To(Equal(1))
+					Expect(fakeAivenClient.ForkServiceArgsForCall(0).UserConfig.BackupName).To(Equal("second backup"))
+				})
+				It("should get the latest backup even if the backups are in a weird order", func() {
+					getServiceReturnData.Backups = []aiven.ServiceBackup{}
+					rand.Seed(time.Now().UnixNano())
+					for i := 0; i < 10; i++ {
+						if i != 5 {
+							offset := rand.Intn(1000) + 10
+							getServiceReturnData.Backups = append(getServiceReturnData.Backups, aiven.ServiceBackup{
+								Name: fmt.Sprintf("random-%d", offset),
+								Time: time.Now().Add(-time.Hour * time.Duration(offset)),
+								Size: offset,
+							})
+						} else {
+							getServiceReturnData.Backups = append(getServiceReturnData.Backups, aiven.ServiceBackup{
+								Name: "latest",
+								Time: time.Now(),
+								Size: 1,
+							})
+
+						}
+					}
+					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					fakeAivenClient.GetServiceTagsReturns(&getServiceTagsReturnData, nil)
+					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeAivenClient.ForkServiceCallCount()).To(Equal(1))
+					Expect(fakeAivenClient.ForkServiceArgsForCall(0).UserConfig.BackupName).To(Equal("latest"))
 				})
 				It("should error when trying to copy from influxdb to *search", func() {
 					getServiceReturnData.ServiceType = "influxdb"
@@ -592,9 +628,7 @@ var _ = Describe("Provider", func() {
 				BrokerName:         config.BrokerName,
 				RestoredFromBackup: "false",
 			}
-			fakeAivenClient.GetServiceReturns(&aiven.Service{
-				Tags: originalTags,
-			}, nil)
+			fakeAivenClient.GetServiceTagsReturns(&originalTags, nil)
 			_, err := aivenProvider.Update(context.Background(), updateData, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
