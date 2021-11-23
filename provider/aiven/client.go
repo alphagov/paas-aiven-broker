@@ -8,30 +8,37 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"code.cloudfoundry.org/lager"
 )
 
 //go:generate counterfeiter -o fakes/fake_client.go . Client
 type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
 	GetService(params *GetServiceInput) (*Service, error)
+	GetServiceTags(params *GetServiceTagsInput) (*ServiceTags, error)
 	DeleteService(params *DeleteServiceInput) error
 	CreateServiceUser(params *CreateServiceUserInput) (string, error)
 	DeleteServiceUser(params *DeleteServiceUserInput) (string, error)
 	UpdateService(params *UpdateServiceInput) (string, error)
+	UpdateServiceTags(params *UpdateServiceTagsInput) (string, error)
+	ForkService(params *ForkServiceInput) (string, error)
 }
 
 type HttpClient struct {
 	BaseURL    string
 	Token      string
 	Project    string
+	logger     lager.Logger
 	HTTPClient *http.Client
 }
 
-func NewHttpClient(baseURL, token, project string) *HttpClient {
+func NewHttpClient(baseURL, token, project string, logger lager.Logger) *HttpClient {
 	return &HttpClient{
 		BaseURL:    baseURL,
 		Token:      token,
 		Project:    project,
+		logger:     logger,
 		HTTPClient: &http.Client{},
 	}
 }
@@ -45,12 +52,13 @@ func (p ErrInvalidUpdate) Error() string {
 }
 
 type CreateServiceInput struct {
-	Cloud       string     `json:"cloud,omitempty"`
-	GroupName   string     `json:"group_name,omitempty"`
-	Plan        string     `json:"plan,omitempty"`
-	ServiceName string     `json:"service_name"`
-	ServiceType string     `json:"service_type"`
-	UserConfig  UserConfig `json:"user_config"`
+	Cloud       string      `json:"cloud,omitempty"`
+	GroupName   string      `json:"group_name,omitempty"`
+	Plan        string      `json:"plan,omitempty"`
+	ServiceName string      `json:"service_name"`
+	ServiceType string      `json:"service_type"`
+	UserConfig  UserConfig  `json:"user_config"`
+	Tags        ServiceTags `json:"tags"`
 }
 
 type DeleteServiceInput struct {
@@ -91,6 +99,8 @@ type Service struct {
 	UpdateTime       time.Time        `json:"update_time"`
 	ServiceUriParams ServiceUriParams `json:"service_uri_params"`
 	ServiceType      string           `json:"service_type"`
+	Backups          []ServiceBackup  `json:"backups"`
+	Plan             string           `json:"plan"`
 }
 
 type ServiceStatus string
@@ -100,6 +110,7 @@ const (
 	Rebuilding  ServiceStatus = "REBUILDING"
 	Rebalancing ServiceStatus = "REBALANCING"
 	PowerOff    ServiceStatus = "POWEROFF"
+	Missing     ServiceStatus = "MISSING"
 )
 
 type ServiceUriParams struct {
@@ -109,10 +120,49 @@ type ServiceUriParams struct {
 	User     string `json:"user"`
 }
 
+type ServiceBackup struct {
+	Name string    `json:"backup_name"`
+	Time time.Time `json:"backup_time"`
+	Size int       `json:"data_size"`
+}
+
+type ServiceTags struct {
+	DeployEnv          string    `json:"deploy_env"`
+	ServiceID          string    `json:"service_id"`
+	PlanID             string    `json:"plan_id"`
+	OrganizationID     string    `json:"organization_id"`
+	SpaceID            string    `json:"space_id"`
+	BrokerName         string    `json:"broker_name"`
+	RestoredFromBackup string    `json:"restored_from_backup"`
+	OriginServiceID    string    `json:"restored_from_service"`
+	RestoredFromTime   time.Time `json:"restored_from_time"`
+}
+
+type GetServiceTagsInput struct {
+	ServiceName string
+}
+
+type GetServiceTagsResponse struct {
+	Tags ServiceTags `json:""`
+}
 type UpdateServiceInput struct {
 	ServiceName string     `json:"-"`
 	Plan        string     `json:"plan,omitempty"`
 	UserConfig  UserConfig `json:"user_config"`
+}
+type UpdateServiceTagsInput struct {
+	ServiceName string      `json:"-"`
+	Tags        ServiceTags `json:"tags"`
+}
+
+type ForkServiceInput struct {
+	Cloud       string      `json:"cloud,omitempty"`
+	GroupName   string      `json:"group_name,omitempty"`
+	Plan        string      `json:"plan,omitempty"`
+	ServiceName string      `json:"service_name"`
+	ServiceType string      `json:"service_type"`
+	UserConfig  UserConfig  `json:"user_config"`
+	Tags        ServiceTags `json:"tags"`
 }
 
 type AivenErrorResponse struct {
@@ -124,6 +174,31 @@ type AivenErrorResponse struct {
 }
 
 func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
+	reqBody, err := json.Marshal(params)
+	if err != nil {
+		return "", err
+	}
+	a.logger.Info("create-service-body", lager.Data{
+		"reqBody": reqBody})
+
+	res, err := a.do("POST", fmt.Sprintf("/project/%s/service", a.Project), reqBody)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error creating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
+	return string(b), nil
+}
+
+func (a *HttpClient) ForkService(params *ForkServiceInput) (string, error) {
 	reqBody, err := json.Marshal(params)
 	if err != nil {
 		return "", err
@@ -146,7 +221,7 @@ func (a *HttpClient) CreateService(params *CreateServiceInput) (string, error) {
 	return string(b), nil
 }
 
-var ErrInstanceDoesNotExist = errors.New("Error deleting service: service instance does not exist")
+var ErrInstanceDoesNotExist = errors.New("Error: service instance does not exist")
 
 func (a *HttpClient) DeleteService(params *DeleteServiceInput) error {
 	res, err := a.do("DELETE", fmt.Sprintf("/project/%s/service/%s", a.Project, params.ServiceName), nil)
@@ -233,7 +308,15 @@ func (a *HttpClient) GetService(params *GetServiceInput) (*Service, error) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
+	switch res.StatusCode {
+	case http.StatusNotFound:
+		return &Service{
+			State:      Missing,
+			UpdateTime: time.Now(),
+		}, ErrInstanceDoesNotExist
+	case http.StatusOK:
+		break
+	default:
 		b, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			return nil, err
@@ -264,6 +347,30 @@ func (a *HttpClient) GetService(params *GetServiceInput) (*Service, error) {
 	return &service, nil
 }
 
+func (a *HttpClient) GetServiceTags(params *GetServiceTagsInput) (*ServiceTags, error) {
+	res, err := a.do("GET", fmt.Sprintf("/project/%s/service/%s/tags", a.Project, params.ServiceName), nil)
+	if err != nil {
+		return &ServiceTags{}, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		b, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("Error getting service tags: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
+	getServiceResponse := &GetServiceTagsResponse{}
+	if err := json.NewDecoder(res.Body).Decode(getServiceResponse); err != nil {
+		return nil, err
+	}
+
+	return &getServiceResponse.Tags, nil
+
+}
+
 func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
 	reqBody, err := json.Marshal(params)
 	if err != nil {
@@ -285,6 +392,38 @@ func (a *HttpClient) UpdateService(params *UpdateServiceInput) (string, error) {
 		jsonErr := json.Unmarshal(b, &errorResponse)
 		if jsonErr != nil {
 			return "", fmt.Errorf("Error updating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+		}
+		return "", ErrInvalidUpdate{fmt.Sprintf("Invalid Update: %s", errorResponse.Message)}
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error updating service: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+	}
+
+	return string(b), nil
+}
+
+func (a *HttpClient) UpdateServiceTags(params *UpdateServiceTagsInput) (string, error) {
+	reqBody, err := json.Marshal(params)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := a.do("PUT", fmt.Sprintf("/project/%s/service/%s/tags", a.Project, params.ServiceName), reqBody)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if res.StatusCode == http.StatusBadRequest {
+		var errorResponse AivenErrorResponse
+		jsonErr := json.Unmarshal(b, &errorResponse)
+		if jsonErr != nil {
+			return "", fmt.Errorf("Error updating service tags: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 		}
 		return "", ErrInvalidUpdate{fmt.Sprintf("Invalid Update: %s", errorResponse.Message)}
 	}

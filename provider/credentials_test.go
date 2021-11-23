@@ -41,6 +41,37 @@ var _ = Describe("Credentials", func() {
 		})
 	})
 
+	Context("OpenSearch", func() {
+		const (
+			username = "hich"
+			password = "rickey"
+
+			hostname = "opensearch.aiven.io"
+			port     = "2702"
+		)
+
+		It("should return credentials", func() {
+			credentials, err := provider.BuildCredentials(
+				"opensearch",
+				username, password,
+				hostname, port,
+			)
+
+			Expect(err).NotTo(HaveOccurred())
+
+			jsonCreds, err := json.Marshal(credentials)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(string(jsonCreds)).To(MatchJSON(
+				`{
+					"uri":"https://hich:rickey@opensearch.aiven.io:2702",
+					"hostname":"opensearch.aiven.io", "port":"2702",
+					"username":"hich","password":"rickey"
+				}`,
+			))
+		})
+	})
+
 	Context("InfluxDB", func() {
 		const (
 			username = "hich"

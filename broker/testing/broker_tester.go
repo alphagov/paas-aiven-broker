@@ -26,12 +26,13 @@ func New(credentials brokerapi.BrokerCredentials, brokerAPI http.Handler) Broker
 }
 
 type RequestBody struct {
-	ServiceID        string       `json:"service_id,omitempty"`
-	PlanID           string       `json:"plan_id,omitempty"`
-	OrganizationGUID string       `json:"organization_guid,omitempty"`
-	SpaceGUID        string       `json:"space_guid,omitempty"`
-	AppGUID          string       `json:"app_guid,omitempty"`
-	PreviousValues   *RequestBody `json:"previous_values,omitempty"`
+	ServiceID        string          `json:"service_id,omitempty"`
+	PlanID           string          `json:"plan_id,omitempty"`
+	OrganizationGUID string          `json:"organization_guid,omitempty"`
+	SpaceGUID        string          `json:"space_guid,omitempty"`
+	AppGUID          string          `json:"app_guid,omitempty"`
+	PreviousValues   *RequestBody    `json:"previous_values,omitempty"`
+	RawParameters    json.RawMessage `json:"parameters,omitempty"`
 }
 
 func (bt BrokerTester) Services() *httptest.ResponseRecorder {

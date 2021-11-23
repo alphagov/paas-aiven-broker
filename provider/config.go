@@ -3,6 +3,7 @@ package provider
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 
@@ -10,6 +11,8 @@ import (
 )
 
 type Config struct {
+	DeployEnv         string
+	BrokerName        string `json:"name"`
 	Cloud             string `json:"cloud"`
 	ServiceNamePrefix string
 	APIToken          string
@@ -37,6 +40,10 @@ type AivenServiceElasticsearchConfig struct {
 	ElasticsearchVersion string `json:"elasticsearch_version"`
 }
 
+type AivenServiceOpenSearchConfig struct {
+	OpenSearchVersion string `json:"opensearch_version"`
+}
+
 type AivenServiceInfluxDBConfig struct{}
 
 type PlanSpecificConfig struct {
@@ -44,6 +51,7 @@ type PlanSpecificConfig struct {
 
 	AivenServiceCommonConfig
 	AivenServiceElasticsearchConfig
+	AivenServiceOpenSearchConfig
 	AivenServiceInfluxDBConfig
 }
 
@@ -79,12 +87,24 @@ func DecodeConfig(b []byte) (*Config, error) {
 			if service.Name == "elasticsearch" && plan.ElasticsearchVersion == "" {
 				return config, errors.New("Config error: every elasticsearch plan must specify an `elasticsearch_version`")
 			}
+			if service.Name == "opensearch" && plan.OpenSearchVersion == "" {
+				return config, errors.New("Config error: every opensearch plan must specify an `opensearch_version`")
+			}
 		}
 	}
+	config.BrokerName = os.Getenv("BROKER_NAME")
+	if config.BrokerName == "" {
+		return config, errors.New("Config error: must declare a Broker name")
+	}
 
-	config.ServiceNamePrefix = os.Getenv("SERVICE_NAME_PREFIX")
-	if config.ServiceNamePrefix == "" {
-		return config, errors.New("Config error: must declare a service name prefix")
+	config.DeployEnv = os.Getenv("DEPLOY_ENV")
+	if config.DeployEnv == "" {
+		return config, errors.New("Config error: must declare a Deploy Environment")
+	}
+	config.ServiceNamePrefix = config.DeployEnv
+	serviceNamePrefixFromEnv := os.Getenv("SERVICE_NAME_PREFIX")
+	if serviceNamePrefixFromEnv != "" {
+		config.ServiceNamePrefix = fmt.Sprintf("%s-%s", config.ServiceNamePrefix, serviceNamePrefixFromEnv)
 	}
 
 	// Aiven only allow 64 characters for the service name. The instanceID from Cloud Foundry

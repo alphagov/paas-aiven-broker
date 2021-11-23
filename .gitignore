@@ -1,1 +1,4 @@
+.idea/
+config.json
+ci/integration/integration.test
 .vscode

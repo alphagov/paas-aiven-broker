@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/alphagov/paas-aiven-broker/provider"
+	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
@@ -23,6 +24,29 @@ type FakeServiceProvider struct {
 	bindReturnsOnCall map[int]struct {
 		result1 domain.Binding
 		result2 error
+	}
+	BuildServiceNameStub        func(string) string
+	buildServiceNameMutex       sync.RWMutex
+	buildServiceNameArgsForCall []struct {
+		arg1 string
+	}
+	buildServiceNameReturns struct {
+		result1 string
+	}
+	buildServiceNameReturnsOnCall map[int]struct {
+		result1 string
+	}
+	CheckPermissionsFromTagsStub        func(domain.ProvisionDetails, *aiven.ServiceTags) error
+	checkPermissionsFromTagsMutex       sync.RWMutex
+	checkPermissionsFromTagsArgsForCall []struct {
+		arg1 domain.ProvisionDetails
+		arg2 *aiven.ServiceTags
+	}
+	checkPermissionsFromTagsReturns struct {
+		result1 error
+	}
+	checkPermissionsFromTagsReturnsOnCall map[int]struct {
+		result1 error
 	}
 	DeprovisionStub        func(context.Context, provider.DeprovisionData) (string, error)
 	deprovisionMutex       sync.RWMutex
@@ -54,22 +78,20 @@ type FakeServiceProvider struct {
 		result2 string
 		result3 error
 	}
-	ProvisionStub        func(context.Context, provider.ProvisionData, domain.ProvisionDetails) (string, string, error)
+	ProvisionStub        func(context.Context, provider.ProvisionData, bool) (domain.ProvisionedServiceSpec, error)
 	provisionMutex       sync.RWMutex
 	provisionArgsForCall []struct {
 		arg1 context.Context
 		arg2 provider.ProvisionData
-		arg3 domain.ProvisionDetails
+		arg3 bool
 	}
 	provisionReturns struct {
-		result1 string
-		result2 string
-		result3 error
+		result1 domain.ProvisionedServiceSpec
+		result2 error
 	}
 	provisionReturnsOnCall map[int]struct {
-		result1 string
-		result2 string
-		result3 error
+		result1 domain.ProvisionedServiceSpec
+		result2 error
 	}
 	UnbindStub        func(context.Context, provider.UnbindData) error
 	unbindMutex       sync.RWMutex
@@ -83,19 +105,19 @@ type FakeServiceProvider struct {
 	unbindReturnsOnCall map[int]struct {
 		result1 error
 	}
-	UpdateStub        func(context.Context, provider.UpdateData, domain.UpdateDetails) (string, error)
+	UpdateStub        func(context.Context, provider.UpdateData, bool) (domain.UpdateServiceSpec, error)
 	updateMutex       sync.RWMutex
 	updateArgsForCall []struct {
 		arg1 context.Context
 		arg2 provider.UpdateData
-		arg3 domain.UpdateDetails
+		arg3 bool
 	}
 	updateReturns struct {
-		result1 string
+		result1 domain.UpdateServiceSpec
 		result2 error
 	}
 	updateReturnsOnCall map[int]struct {
-		result1 string
+		result1 domain.UpdateServiceSpec
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -109,15 +131,16 @@ func (fake *FakeServiceProvider) Bind(arg1 context.Context, arg2 provider.BindDa
 		arg1 context.Context
 		arg2 provider.BindData
 	}{arg1, arg2})
+	stub := fake.BindStub
+	fakeReturns := fake.bindReturns
 	fake.recordInvocation("Bind", []interface{}{arg1, arg2})
 	fake.bindMutex.Unlock()
-	if fake.BindStub != nil {
-		return fake.BindStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.bindReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -166,6 +189,129 @@ func (fake *FakeServiceProvider) BindReturnsOnCall(i int, result1 domain.Binding
 	}{result1, result2}
 }
 
+func (fake *FakeServiceProvider) BuildServiceName(arg1 string) string {
+	fake.buildServiceNameMutex.Lock()
+	ret, specificReturn := fake.buildServiceNameReturnsOnCall[len(fake.buildServiceNameArgsForCall)]
+	fake.buildServiceNameArgsForCall = append(fake.buildServiceNameArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.BuildServiceNameStub
+	fakeReturns := fake.buildServiceNameReturns
+	fake.recordInvocation("BuildServiceName", []interface{}{arg1})
+	fake.buildServiceNameMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeServiceProvider) BuildServiceNameCallCount() int {
+	fake.buildServiceNameMutex.RLock()
+	defer fake.buildServiceNameMutex.RUnlock()
+	return len(fake.buildServiceNameArgsForCall)
+}
+
+func (fake *FakeServiceProvider) BuildServiceNameCalls(stub func(string) string) {
+	fake.buildServiceNameMutex.Lock()
+	defer fake.buildServiceNameMutex.Unlock()
+	fake.BuildServiceNameStub = stub
+}
+
+func (fake *FakeServiceProvider) BuildServiceNameArgsForCall(i int) string {
+	fake.buildServiceNameMutex.RLock()
+	defer fake.buildServiceNameMutex.RUnlock()
+	argsForCall := fake.buildServiceNameArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeServiceProvider) BuildServiceNameReturns(result1 string) {
+	fake.buildServiceNameMutex.Lock()
+	defer fake.buildServiceNameMutex.Unlock()
+	fake.BuildServiceNameStub = nil
+	fake.buildServiceNameReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *FakeServiceProvider) BuildServiceNameReturnsOnCall(i int, result1 string) {
+	fake.buildServiceNameMutex.Lock()
+	defer fake.buildServiceNameMutex.Unlock()
+	fake.BuildServiceNameStub = nil
+	if fake.buildServiceNameReturnsOnCall == nil {
+		fake.buildServiceNameReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.buildServiceNameReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *FakeServiceProvider) CheckPermissionsFromTags(arg1 domain.ProvisionDetails, arg2 *aiven.ServiceTags) error {
+	fake.checkPermissionsFromTagsMutex.Lock()
+	ret, specificReturn := fake.checkPermissionsFromTagsReturnsOnCall[len(fake.checkPermissionsFromTagsArgsForCall)]
+	fake.checkPermissionsFromTagsArgsForCall = append(fake.checkPermissionsFromTagsArgsForCall, struct {
+		arg1 domain.ProvisionDetails
+		arg2 *aiven.ServiceTags
+	}{arg1, arg2})
+	stub := fake.CheckPermissionsFromTagsStub
+	fakeReturns := fake.checkPermissionsFromTagsReturns
+	fake.recordInvocation("CheckPermissionsFromTags", []interface{}{arg1, arg2})
+	fake.checkPermissionsFromTagsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeServiceProvider) CheckPermissionsFromTagsCallCount() int {
+	fake.checkPermissionsFromTagsMutex.RLock()
+	defer fake.checkPermissionsFromTagsMutex.RUnlock()
+	return len(fake.checkPermissionsFromTagsArgsForCall)
+}
+
+func (fake *FakeServiceProvider) CheckPermissionsFromTagsCalls(stub func(domain.ProvisionDetails, *aiven.ServiceTags) error) {
+	fake.checkPermissionsFromTagsMutex.Lock()
+	defer fake.checkPermissionsFromTagsMutex.Unlock()
+	fake.CheckPermissionsFromTagsStub = stub
+}
+
+func (fake *FakeServiceProvider) CheckPermissionsFromTagsArgsForCall(i int) (domain.ProvisionDetails, *aiven.ServiceTags) {
+	fake.checkPermissionsFromTagsMutex.RLock()
+	defer fake.checkPermissionsFromTagsMutex.RUnlock()
+	argsForCall := fake.checkPermissionsFromTagsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeServiceProvider) CheckPermissionsFromTagsReturns(result1 error) {
+	fake.checkPermissionsFromTagsMutex.Lock()
+	defer fake.checkPermissionsFromTagsMutex.Unlock()
+	fake.CheckPermissionsFromTagsStub = nil
+	fake.checkPermissionsFromTagsReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeServiceProvider) CheckPermissionsFromTagsReturnsOnCall(i int, result1 error) {
+	fake.checkPermissionsFromTagsMutex.Lock()
+	defer fake.checkPermissionsFromTagsMutex.Unlock()
+	fake.CheckPermissionsFromTagsStub = nil
+	if fake.checkPermissionsFromTagsReturnsOnCall == nil {
+		fake.checkPermissionsFromTagsReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.checkPermissionsFromTagsReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeServiceProvider) Deprovision(arg1 context.Context, arg2 provider.DeprovisionData) (string, error) {
 	fake.deprovisionMutex.Lock()
 	ret, specificReturn := fake.deprovisionReturnsOnCall[len(fake.deprovisionArgsForCall)]
@@ -173,15 +319,16 @@ func (fake *FakeServiceProvider) Deprovision(arg1 context.Context, arg2 provider
 		arg1 context.Context
 		arg2 provider.DeprovisionData
 	}{arg1, arg2})
+	stub := fake.DeprovisionStub
+	fakeReturns := fake.deprovisionReturns
 	fake.recordInvocation("Deprovision", []interface{}{arg1, arg2})
 	fake.deprovisionMutex.Unlock()
-	if fake.DeprovisionStub != nil {
-		return fake.DeprovisionStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.deprovisionReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -237,15 +384,16 @@ func (fake *FakeServiceProvider) LastOperation(arg1 context.Context, arg2 provid
 		arg1 context.Context
 		arg2 provider.LastOperationData
 	}{arg1, arg2})
+	stub := fake.LastOperationStub
+	fakeReturns := fake.lastOperationReturns
 	fake.recordInvocation("LastOperation", []interface{}{arg1, arg2})
 	fake.lastOperationMutex.Unlock()
-	if fake.LastOperationStub != nil {
-		return fake.LastOperationStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2, ret.result3
 	}
-	fakeReturns := fake.lastOperationReturns
 	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
@@ -297,24 +445,25 @@ func (fake *FakeServiceProvider) LastOperationReturnsOnCall(i int, result1 domai
 	}{result1, result2, result3}
 }
 
-func (fake *FakeServiceProvider) Provision(arg1 context.Context, arg2 provider.ProvisionData, arg3 domain.ProvisionDetails) (string, string, error) {
+func (fake *FakeServiceProvider) Provision(arg1 context.Context, arg2 provider.ProvisionData, arg3 bool) (domain.ProvisionedServiceSpec, error) {
 	fake.provisionMutex.Lock()
 	ret, specificReturn := fake.provisionReturnsOnCall[len(fake.provisionArgsForCall)]
 	fake.provisionArgsForCall = append(fake.provisionArgsForCall, struct {
 		arg1 context.Context
 		arg2 provider.ProvisionData
-		arg3 domain.ProvisionDetails
+		arg3 bool
 	}{arg1, arg2, arg3})
+	stub := fake.ProvisionStub
+	fakeReturns := fake.provisionReturns
 	fake.recordInvocation("Provision", []interface{}{arg1, arg2, arg3})
 	fake.provisionMutex.Unlock()
-	if fake.ProvisionStub != nil {
-		return fake.ProvisionStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
+		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.provisionReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeServiceProvider) ProvisionCallCount() int {
@@ -323,46 +472,43 @@ func (fake *FakeServiceProvider) ProvisionCallCount() int {
 	return len(fake.provisionArgsForCall)
 }
 
-func (fake *FakeServiceProvider) ProvisionCalls(stub func(context.Context, provider.ProvisionData, domain.ProvisionDetails) (string, string, error)) {
+func (fake *FakeServiceProvider) ProvisionCalls(stub func(context.Context, provider.ProvisionData, bool) (domain.ProvisionedServiceSpec, error)) {
 	fake.provisionMutex.Lock()
 	defer fake.provisionMutex.Unlock()
 	fake.ProvisionStub = stub
 }
 
-func (fake *FakeServiceProvider) ProvisionArgsForCall(i int) (context.Context, provider.ProvisionData, domain.ProvisionDetails) {
+func (fake *FakeServiceProvider) ProvisionArgsForCall(i int) (context.Context, provider.ProvisionData, bool) {
 	fake.provisionMutex.RLock()
 	defer fake.provisionMutex.RUnlock()
 	argsForCall := fake.provisionArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeServiceProvider) ProvisionReturns(result1 string, result2 string, result3 error) {
+func (fake *FakeServiceProvider) ProvisionReturns(result1 domain.ProvisionedServiceSpec, result2 error) {
 	fake.provisionMutex.Lock()
 	defer fake.provisionMutex.Unlock()
 	fake.ProvisionStub = nil
 	fake.provisionReturns = struct {
-		result1 string
-		result2 string
-		result3 error
-	}{result1, result2, result3}
+		result1 domain.ProvisionedServiceSpec
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeServiceProvider) ProvisionReturnsOnCall(i int, result1 string, result2 string, result3 error) {
+func (fake *FakeServiceProvider) ProvisionReturnsOnCall(i int, result1 domain.ProvisionedServiceSpec, result2 error) {
 	fake.provisionMutex.Lock()
 	defer fake.provisionMutex.Unlock()
 	fake.ProvisionStub = nil
 	if fake.provisionReturnsOnCall == nil {
 		fake.provisionReturnsOnCall = make(map[int]struct {
-			result1 string
-			result2 string
-			result3 error
+			result1 domain.ProvisionedServiceSpec
+			result2 error
 		})
 	}
 	fake.provisionReturnsOnCall[i] = struct {
-		result1 string
-		result2 string
-		result3 error
-	}{result1, result2, result3}
+		result1 domain.ProvisionedServiceSpec
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeServiceProvider) Unbind(arg1 context.Context, arg2 provider.UnbindData) error {
@@ -372,15 +518,16 @@ func (fake *FakeServiceProvider) Unbind(arg1 context.Context, arg2 provider.Unbi
 		arg1 context.Context
 		arg2 provider.UnbindData
 	}{arg1, arg2})
+	stub := fake.UnbindStub
+	fakeReturns := fake.unbindReturns
 	fake.recordInvocation("Unbind", []interface{}{arg1, arg2})
 	fake.unbindMutex.Unlock()
-	if fake.UnbindStub != nil {
-		return fake.UnbindStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.unbindReturns
 	return fakeReturns.result1
 }
 
@@ -426,23 +573,24 @@ func (fake *FakeServiceProvider) UnbindReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeServiceProvider) Update(arg1 context.Context, arg2 provider.UpdateData, arg3 domain.UpdateDetails) (string, error) {
+func (fake *FakeServiceProvider) Update(arg1 context.Context, arg2 provider.UpdateData, arg3 bool) (domain.UpdateServiceSpec, error) {
 	fake.updateMutex.Lock()
 	ret, specificReturn := fake.updateReturnsOnCall[len(fake.updateArgsForCall)]
 	fake.updateArgsForCall = append(fake.updateArgsForCall, struct {
 		arg1 context.Context
 		arg2 provider.UpdateData
-		arg3 domain.UpdateDetails
+		arg3 bool
 	}{arg1, arg2, arg3})
+	stub := fake.UpdateStub
+	fakeReturns := fake.updateReturns
 	fake.recordInvocation("Update", []interface{}{arg1, arg2, arg3})
 	fake.updateMutex.Unlock()
-	if fake.UpdateStub != nil {
-		return fake.UpdateStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.updateReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -452,41 +600,41 @@ func (fake *FakeServiceProvider) UpdateCallCount() int {
 	return len(fake.updateArgsForCall)
 }
 
-func (fake *FakeServiceProvider) UpdateCalls(stub func(context.Context, provider.UpdateData, domain.UpdateDetails) (string, error)) {
+func (fake *FakeServiceProvider) UpdateCalls(stub func(context.Context, provider.UpdateData, bool) (domain.UpdateServiceSpec, error)) {
 	fake.updateMutex.Lock()
 	defer fake.updateMutex.Unlock()
 	fake.UpdateStub = stub
 }
 
-func (fake *FakeServiceProvider) UpdateArgsForCall(i int) (context.Context, provider.UpdateData, domain.UpdateDetails) {
+func (fake *FakeServiceProvider) UpdateArgsForCall(i int) (context.Context, provider.UpdateData, bool) {
 	fake.updateMutex.RLock()
 	defer fake.updateMutex.RUnlock()
 	argsForCall := fake.updateArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeServiceProvider) UpdateReturns(result1 string, result2 error) {
+func (fake *FakeServiceProvider) UpdateReturns(result1 domain.UpdateServiceSpec, result2 error) {
 	fake.updateMutex.Lock()
 	defer fake.updateMutex.Unlock()
 	fake.UpdateStub = nil
 	fake.updateReturns = struct {
-		result1 string
+		result1 domain.UpdateServiceSpec
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeServiceProvider) UpdateReturnsOnCall(i int, result1 string, result2 error) {
+func (fake *FakeServiceProvider) UpdateReturnsOnCall(i int, result1 domain.UpdateServiceSpec, result2 error) {
 	fake.updateMutex.Lock()
 	defer fake.updateMutex.Unlock()
 	fake.UpdateStub = nil
 	if fake.updateReturnsOnCall == nil {
 		fake.updateReturnsOnCall = make(map[int]struct {
-			result1 string
+			result1 domain.UpdateServiceSpec
 			result2 error
 		})
 	}
 	fake.updateReturnsOnCall[i] = struct {
-		result1 string
+		result1 domain.UpdateServiceSpec
 		result2 error
 	}{result1, result2}
 }
@@ -496,6 +644,10 @@ func (fake *FakeServiceProvider) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.bindMutex.RLock()
 	defer fake.bindMutex.RUnlock()
+	fake.buildServiceNameMutex.RLock()
+	defer fake.buildServiceNameMutex.RUnlock()
+	fake.checkPermissionsFromTagsMutex.RLock()
+	defer fake.checkPermissionsFromTagsMutex.RUnlock()
 	fake.deprovisionMutex.RLock()
 	defer fake.deprovisionMutex.RUnlock()
 	fake.lastOperationMutex.RLock()

@@ -1,4 +1,4 @@
-package elastic
+package elasticsearch
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ type nopCloser struct {
 
 func (nopCloser) Close() error { return nil }
 
-var _ = Describe("Elastic Client", func() {
+var _ = Describe("ElasticSearch Client", func() {
 	var (
 		client *Client
 	)

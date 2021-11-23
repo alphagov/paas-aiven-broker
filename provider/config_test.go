@@ -2,6 +2,7 @@ package provider_test
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/alphagov/paas-aiven-broker/provider"
 	. "github.com/onsi/ginkgo"
@@ -29,9 +30,16 @@ var _ = Describe("Config", func() {
 										}]
 									},
 									{
+										"name": "opensearch",
+										"plans": [{
+											"aiven_plan": "startup-2",
+											"opensearch_version": "1"
+										}]
+									},
+									{
 										"name": "influxdb",
 										"plans": [{
-											"aiven_plan": "startup-2"
+											"aiven_plan": "startup-3"
 										}]
 									}
 								]
@@ -43,11 +51,17 @@ var _ = Describe("Config", func() {
 			elasticsearchPlanSpecificConfig.AivenPlan = "startup-1"
 			elasticsearchPlanSpecificConfig.ElasticsearchVersion = "6"
 
+			opensearchPlanSpecificConfig := provider.PlanSpecificConfig{}
+			opensearchPlanSpecificConfig.AivenPlan = "startup-2"
+			opensearchPlanSpecificConfig.OpenSearchVersion = "1"
+
 			influxDBPlanSpecificConfig := provider.PlanSpecificConfig{}
-			influxDBPlanSpecificConfig.AivenPlan = "startup-2"
+			influxDBPlanSpecificConfig.AivenPlan = "startup-3"
 
 			expectedConfig := &provider.Config{
 				Cloud:             "aws-eu-west-1",
+				DeployEnv:         "test",
+				BrokerName:        "test",
 				ServiceNamePrefix: "test",
 				APIToken:          "token",
 				Project:           "project",
@@ -60,6 +74,16 @@ var _ = Describe("Config", func() {
 							Plans: []provider.Plan{
 								{
 									PlanSpecificConfig: elasticsearchPlanSpecificConfig,
+								},
+							},
+						},
+						{
+							Service: domain.Service{
+								Name: "opensearch",
+							},
+							Plans: []provider.Plan{
+								{
+									PlanSpecificConfig: opensearchPlanSpecificConfig,
 								},
 							},
 						},
@@ -127,6 +151,12 @@ var _ = Describe("Config", func() {
 	})
 
 	Describe("Mandatory parameters", func() {
+
+		BeforeEach(func() {
+			os.Unsetenv("AIVEN_USERNAME")
+			os.Unsetenv("AIVEN_PASSWORD")
+			os.Unsetenv("AIVEN_CLOUD")
+		})
 		It("returns an error if `cloud` is empty", func() {
 			rawConfig = json.RawMessage(`
 						{
@@ -174,6 +204,26 @@ var _ = Describe("Config", func() {
 						`)
 				_, err := provider.DecodeConfig(rawConfig)
 				Expect(err).To(MatchError("Config error: every elasticsearch plan must specify an `elasticsearch_version`"))
+			})
+		})
+
+		Context("when the service is opensearch", func() {
+			It("returns an error if a plan is missing the OpenSearch version", func() {
+				rawConfig = json.RawMessage(`
+							{
+								"cloud": "aws-eu-west-1",
+								"catalog": {
+									"services": [
+										{
+											"name": "opensearch",
+											"plans": [{"aiven_plan": "plan-a"}]
+										}
+									]
+								}
+							}
+						`)
+				_, err := provider.DecodeConfig(rawConfig)
+				Expect(err).To(MatchError("Config error: every opensearch plan must specify an `opensearch_version`"))
 			})
 		})
 

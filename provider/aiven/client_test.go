@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 
 	. "github.com/onsi/ginkgo"
@@ -17,11 +18,14 @@ var _ = Describe("Client", func() {
 	var (
 		aivenAPI    *ghttp.Server
 		aivenClient *aiven.HttpClient
+		logger      lager.Logger
 	)
 
 	BeforeEach(func() {
+		logger = lager.NewLogger("client")
+		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		aivenAPI = ghttp.NewServer()
-		aivenClient = aiven.NewHttpClient(aivenAPI.URL(), "token", "my-project")
+		aivenClient = aiven.NewHttpClient(aivenAPI.URL(), "token", "my-project", logger)
 	})
 
 	AfterEach(func() {
@@ -40,6 +44,52 @@ var _ = Describe("Client", func() {
 				ServiceName: "name",
 				ServiceType: "type",
 				UserConfig:  userConfig,
+				Tags:        aiven.ServiceTags{},
+			}
+			expectedBody, _ := json.Marshal(createServiceInput)
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.VerifyRequest("POST", "/v1/project/my-project/service"),
+				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
+				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
+				ghttp.VerifyBody(expectedBody),
+				ghttp.RespondWith(http.StatusOK, "{}"),
+			))
+
+			actualService, err := aivenClient.CreateService(createServiceInput)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(actualService).To(Equal("{}"))
+		})
+
+		It("returns an error if the http request fails", func() {
+			createServiceInput := &aiven.CreateServiceInput{}
+			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
+				ghttp.RespondWith(http.StatusNotFound, "{}"),
+			))
+
+			actualService, err := aivenClient.CreateService(createServiceInput)
+
+			Expect(err).To(MatchError("Error creating service: 404 status code returned from Aiven: '{}'"))
+			Expect(actualService).To(Equal(""))
+		})
+	})
+
+	Describe("ForkService", func() {
+		It("should make a valid request", func() {
+			userConfig := aiven.UserConfig{}
+			userConfig.ElasticsearchVersion = "6"
+			userConfig.IPFilter = []string{"1.2.3.4"}
+			userConfig.ForkProject = "my-project"
+			userConfig.BackupServiceName = "some-instance"
+			userConfig.BackupName = "some-backup"
+
+			createServiceInput := &aiven.CreateServiceInput{
+				Cloud:       "cloud",
+				Plan:        "plan",
+				ServiceName: "name",
+				ServiceType: "type",
+				UserConfig:  userConfig,
+				Tags:        aiven.ServiceTags{},
 			}
 			expectedBody, _ := json.Marshal(createServiceInput)
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
@@ -77,11 +127,29 @@ var _ = Describe("Client", func() {
 
 			expectedUpdateTime := "2018-06-21T10:01:05.000040+00:00"
 
+			expectedBackupTimeS := "2021-10-24T16:11:03.171000Z"
+			expectedBackupTime, err := time.Parse(time.RFC3339, expectedBackupTimeS)
+			Expect(err).ToNot(HaveOccurred())
+
+			expectedBackups := []aiven.ServiceBackup{
+				{
+					Name: "testbackup",
+					Time: expectedBackupTime,
+					Size: 123,
+				},
+			}
+
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.VerifyRequest("GET", "/v1/project/my-project/service/my-service"),
 				ghttp.VerifyHeaderKV("Content-Type", "application/json"),
 				ghttp.VerifyHeaderKV("Authorization", "aivenv1 token"),
-				ghttp.RespondWith(http.StatusOK, fmt.Sprintf(`{"service": {"service_type": "pg", "state": "RUNNING", "update_time": "%s"}}`, expectedUpdateTime)),
+				ghttp.RespondWith(http.StatusOK, fmt.Sprintf(
+					`{"service": { "backups": [{"backup_name": "%s", "backup_time": "%s","data_size": %d}], "service_type": "pg", "state": "RUNNING", "update_time": "%s"}}`,
+					expectedBackups[0].Name,
+					expectedBackupTimeS,
+					expectedBackups[0].Size,
+					expectedUpdateTime,
+				)),
 			))
 
 			service, err := aivenClient.GetService(getServiceInput)
@@ -91,6 +159,7 @@ var _ = Describe("Client", func() {
 			Expect(service.State).To(BeEquivalentTo("RUNNING"))
 			Expect(service.ServiceType).To(Equal("pg"))
 			Expect(service.UpdateTime).To(Equal(parsedTime))
+			Expect(service.Backups).To(Equal(expectedBackups))
 		})
 
 		It("returns an error if the state is missing", func() {
@@ -158,7 +227,7 @@ var _ = Describe("Client", func() {
 
 			_, err := aivenClient.GetService(getServiceInput)
 
-			Expect(err).To(MatchError("Error getting service: 404 status code returned from Aiven: '{}'"))
+			Expect(err).To(MatchError(aiven.ErrInstanceDoesNotExist))
 		})
 	})
 

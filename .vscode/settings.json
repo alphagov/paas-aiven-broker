@@ -1,0 +1,3 @@
+{
+    "ginkgotestexplorer.testEnvFile": "${workspaceFolder}/.test.env"
+}

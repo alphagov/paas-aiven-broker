@@ -1,4 +1,4 @@
-package elastic_test
+package elasticsearch_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestElastic(t *testing.T) {
+func TestElasticSearch(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Elastic Suite")
+	RunSpecs(t, "ElasticSearch Suite")
 }

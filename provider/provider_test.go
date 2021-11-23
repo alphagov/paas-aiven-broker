@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven/fakes"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/pivotal-cf/brokerapi/domain"
@@ -39,6 +42,7 @@ var _ = Describe("Provider", func() {
 		planSpecificConfig2.ElasticsearchVersion = "6"
 
 		config = &provider.Config{
+			DeployEnv:         "env",
 			Cloud:             "aws-eu-west-1",
 			ServiceNamePrefix: "env",
 			Catalog: provider.Catalog{
@@ -66,29 +70,38 @@ var _ = Describe("Provider", func() {
 			},
 		}
 		fakeAivenClient = &fakes.FakeClient{}
+		fakeAivenClient.GetServiceReturns(&aiven.Service{}, nil)
+
+		fakeAivenClient.GetServiceTagsReturns(&aiven.ServiceTags{
+			PlanID: "olduuid",
+		}, nil)
+		logger := lager.NewLogger("provider")
+		logger.RegisterSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG))
 		aivenProvider = &provider.AivenProvider{
 			Client:                       fakeAivenClient,
 			Config:                       config,
 			AllowUserProvisionParameters: true,
 			AllowUserUpdateParameters:    true,
+			Logger:                       logger,
 		}
 	})
 
 	Describe("Provision", func() {
-		var (
-			provisionDetails domain.ProvisionDetails
-		)
 		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
-				InstanceID:    "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
+				InstanceID:    "09e1993e-62e2-4040-adf2-4d3ec741efe6",
 				Service:       domain.Service{ID: "uuid-1", Name: "elasticsearch"},
 				Plan:          domain.ServicePlan{ID: "uuid-2"},
 				RawParameters: json.RawMessage{},
+				Details: domain.ProvisionDetails{
+					OrganizationGUID: "11084e6f-4cd6-41db-ac2f-bc7e98b29302",
+					SpaceGUID:        "e3ccd653-30b1-4d72-bf11-148e21c1b238",
+				},
 			}
 			It("includes ip whitelist", func() {
 				os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
-				provisionDetails.RawParameters = nil
-				_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+				provisionData.Details.RawParameters = nil
+				_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
@@ -97,65 +110,94 @@ var _ = Describe("Provider", func() {
 				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
 
 				expectedParameters := &aiven.CreateServiceInput{
-					Cloud:       "aws-eu-west-1",
+					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
 					UserConfig:  userConfig,
+					Tags: aiven.ServiceTags{
+						DeployEnv:          config.DeployEnv,
+						ServiceID:          "09e1993e-62e2-4040-adf2-4d3ec741efe6",
+						PlanID:             provisionData.Plan.ID,
+						OrganizationID:     provisionData.Details.OrganizationGUID,
+						SpaceID:            provisionData.Details.SpaceGUID,
+						BrokerName:         config.BrokerName,
+						RestoredFromBackup: "false",
+						OriginServiceID:    "",
+						RestoredFromTime:   time.Time{},
+					},
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
 			})
 			It("includes custom ip whitelist", func() {
 				os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
-				provisionDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
-				_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+				provisionData.Details.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
+				_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
-
-				fmt.Sprint(provisionDetails.RawParameters)
 
 				userConfig := aiven.UserConfig{}
 				userConfig.ElasticsearchVersion = "6"
 				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8", "9.10.11.12"}
 
 				expectedParameters := &aiven.CreateServiceInput{
-					Cloud:       "aws-eu-west-1",
+					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
 					UserConfig:  userConfig,
+					Tags: aiven.ServiceTags{
+						DeployEnv:          config.DeployEnv,
+						ServiceID:          "09e1993e-62e2-4040-adf2-4d3ec741efe6",
+						PlanID:             provisionData.Plan.ID,
+						OrganizationID:     provisionData.Details.OrganizationGUID,
+						SpaceID:            provisionData.Details.SpaceGUID,
+						BrokerName:         config.BrokerName,
+						RestoredFromBackup: "false",
+						OriginServiceID:    "",
+						RestoredFromTime:   time.Time{},
+					},
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
 			})
 			It("includes custom ip whitelist with multiple values", func() {
 				os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
-				provisionDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12,13.14.15.16"}`)
-				_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+				provisionData.Details.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12,13.14.15.16"}`)
+				_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
-
-				fmt.Sprint(provisionDetails.RawParameters)
 
 				userConfig := aiven.UserConfig{}
 				userConfig.ElasticsearchVersion = "6"
 				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8", "9.10.11.12", "13.14.15.16"}
 
 				expectedParameters := &aiven.CreateServiceInput{
-					Cloud:       "aws-eu-west-1",
+					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
 					UserConfig:  userConfig,
+					Tags: aiven.ServiceTags{
+						DeployEnv:          config.DeployEnv,
+						ServiceID:          "09e1993e-62e2-4040-adf2-4d3ec741efe6",
+						PlanID:             provisionData.Plan.ID,
+						OrganizationID:     provisionData.Details.OrganizationGUID,
+						SpaceID:            provisionData.Details.SpaceGUID,
+						BrokerName:         config.BrokerName,
+						RestoredFromBackup: "false",
+						OriginServiceID:    "",
+						RestoredFromTime:   time.Time{},
+					},
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 				os.Unsetenv("IP_WHITELIST")
 			})
 			It("includes custom ip whitelist when global env is not set", func() {
 				os.Unsetenv("IP_WHITELIST")
-				provisionDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
-				_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+				provisionData.Details.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
+				_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
@@ -164,18 +206,29 @@ var _ = Describe("Provider", func() {
 				userConfig.IPFilter = []string{"9.10.11.12"}
 
 				expectedParameters := &aiven.CreateServiceInput{
-					Cloud:       "aws-eu-west-1",
+					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
 					UserConfig:  userConfig,
+					Tags: aiven.ServiceTags{
+						DeployEnv:          config.DeployEnv,
+						ServiceID:          "09e1993e-62e2-4040-adf2-4d3ec741efe6",
+						PlanID:             provisionData.Plan.ID,
+						OrganizationID:     provisionData.Details.OrganizationGUID,
+						SpaceID:            provisionData.Details.SpaceGUID,
+						BrokerName:         config.BrokerName,
+						RestoredFromBackup: "false",
+						OriginServiceID:    "",
+						RestoredFromTime:   time.Time{},
+					},
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
 			})
 			It("excludes ip whitelist when not set", func() {
 				os.Unsetenv("IP_WHITELIST")
-				provisionDetails.RawParameters = nil
-				_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+				provisionData.Details.RawParameters = nil
+				_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
@@ -184,13 +237,101 @@ var _ = Describe("Provider", func() {
 				userConfig.IPFilter = []string{}
 
 				expectedParameters := &aiven.CreateServiceInput{
-					Cloud:       "aws-eu-west-1",
+					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
 					ServiceType: "elasticsearch",
 					UserConfig:  userConfig,
+					Tags: aiven.ServiceTags{
+						DeployEnv:          config.DeployEnv,
+						ServiceID:          "09e1993e-62e2-4040-adf2-4d3ec741efe6",
+						PlanID:             provisionData.Plan.ID,
+						OrganizationID:     provisionData.Details.OrganizationGUID,
+						SpaceID:            provisionData.Details.SpaceGUID,
+						BrokerName:         config.BrokerName,
+						RestoredFromBackup: "false",
+						OriginServiceID:    "",
+						RestoredFromTime:   time.Time{},
+					},
 				}
 				Expect(fakeAivenClient.CreateServiceArgsForCall(0)).To(Equal(expectedParameters))
+			})
+			Context("when copying from an existing service", func() {
+				var getServiceReturnData aiven.Service
+				var getServiceTagsReturnData aiven.ServiceTags
+				BeforeEach(func() {
+					provisionData.Details.RawParameters = json.RawMessage(`{"restore_from_latest_backup_of": "source-service-name"}`)
+					getServiceReturnData = aiven.Service{
+						ServiceType: "elasticsearch",
+						Backups: []aiven.ServiceBackup{
+							{
+								Name: "first backup",
+								Time: time.Now().Add(-time.Hour * 2),
+								Size: 123,
+							},
+							{
+								Name: "second backup",
+								Time: time.Now().Add(-time.Hour),
+								Size: 123,
+							},
+						},
+					}
+					getServiceTagsReturnData = aiven.ServiceTags{
+						OrganizationID: provisionData.Details.OrganizationGUID,
+						SpaceID:        provisionData.Details.SpaceGUID,
+						PlanID:         provisionData.Plan.ID,
+					}
+				})
+				It("should error if no backups exist for the source service", func() {
+					getServiceReturnData.Backups = []aiven.ServiceBackup{}
+					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					fakeAivenClient.GetServiceTagsReturns(&getServiceTagsReturnData, nil)
+					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(fmt.Errorf("No backups found for 'source-service-name'")))
+				})
+				It("should get the latest backup", func() {
+					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					fakeAivenClient.GetServiceTagsReturns(&getServiceTagsReturnData, nil)
+					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeAivenClient.ForkServiceCallCount()).To(Equal(1))
+					Expect(fakeAivenClient.ForkServiceArgsForCall(0).UserConfig.BackupName).To(Equal("second backup"))
+				})
+				It("should get the latest backup even if the backups are in a weird order", func() {
+					getServiceReturnData.Backups = []aiven.ServiceBackup{}
+					rand.Seed(time.Now().UnixNano())
+					for i := 0; i < 10; i++ {
+						if i != 5 {
+							offset := rand.Intn(1000) + 10
+							getServiceReturnData.Backups = append(getServiceReturnData.Backups, aiven.ServiceBackup{
+								Name: fmt.Sprintf("random-%d", offset),
+								Time: time.Now().Add(-time.Hour * time.Duration(offset)),
+								Size: offset,
+							})
+						} else {
+							getServiceReturnData.Backups = append(getServiceReturnData.Backups, aiven.ServiceBackup{
+								Name: "latest",
+								Time: time.Now(),
+								Size: 1,
+							})
+
+						}
+					}
+					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					fakeAivenClient.GetServiceTagsReturns(&getServiceTagsReturnData, nil)
+					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(fakeAivenClient.ForkServiceCallCount()).To(Equal(1))
+					Expect(fakeAivenClient.ForkServiceArgsForCall(0).UserConfig.BackupName).To(Equal("latest"))
+				})
+				It("should error when trying to copy from influxdb to *search", func() {
+					getServiceReturnData.ServiceType = "influxdb"
+					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
+					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(fmt.Errorf("You cannot restore an influxdb backup to elasticsearch")))
+				})
 			})
 		})
 
@@ -200,7 +341,7 @@ var _ = Describe("Provider", func() {
 			}
 			fakeAivenClient.CreateServiceReturnsOnCall(0, "", errors.New("some-error"))
 
-			_, _, err := aivenProvider.Provision(context.Background(), provisionData, provisionDetails)
+			_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -417,9 +558,6 @@ var _ = Describe("Provider", func() {
 	})
 
 	Describe("Update", func() {
-		var (
-			updateDetails domain.UpdateDetails
-		)
 		It("should pass the correct parameters to the Aiven client", func() {
 			os.Setenv("IP_WHITELIST", "1.2.3.4,5.6.7.8")
 			updateData := provider.UpdateData{
@@ -428,10 +566,10 @@ var _ = Describe("Provider", func() {
 					ServiceID:      "uuid-1",
 					PlanID:         "uuid-3",
 					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
+					RawParameters:  nil,
 				},
 			}
-			updateDetails.RawParameters = nil
-			_, err := aivenProvider.Update(context.Background(), updateData, updateDetails)
+			_, err := aivenProvider.Update(context.Background(), updateData, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
@@ -451,13 +589,12 @@ var _ = Describe("Provider", func() {
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 				Details: domain.UpdateDetails{
-					ServiceID:      "uuid-1",
-					PlanID:         "uuid-3",
-					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
+					ServiceID:     "uuid-1",
+					PlanID:        "uuid-3",
+					RawParameters: json.RawMessage(`{"ip_filter": "9.10.11.12"}`),
 				},
 			}
-			updateDetails.RawParameters = json.RawMessage(`{"ip_filter": "9.10.11.12"}`)
-			_, err := aivenProvider.Update(context.Background(), updateData, updateDetails)
+			_, err := aivenProvider.Update(context.Background(), updateData, true)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
@@ -473,7 +610,7 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.UpdateServiceArgsForCall(0)).To(Equal(expectedParameters))
 		})
 
-		It("should return an error if the client returns error", func() {
+		It("should update the service tags on plan change", func() {
 			updateData := provider.UpdateData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 				Details: domain.UpdateDetails{
@@ -482,10 +619,38 @@ var _ = Describe("Provider", func() {
 					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
 				},
 			}
-			updateDetails.RawParameters = nil
+			originalTags := aiven.ServiceTags{
+				DeployEnv:          config.DeployEnv,
+				ServiceID:          updateData.InstanceID,
+				PlanID:             updateData.Details.PreviousValues.PlanID,
+				OrganizationID:     "some-org",
+				SpaceID:            "some-space",
+				BrokerName:         config.BrokerName,
+				RestoredFromBackup: "false",
+			}
+			fakeAivenClient.GetServiceTagsReturns(&originalTags, nil)
+			_, err := aivenProvider.Update(context.Background(), updateData, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
+			Expect(fakeAivenClient.UpdateServiceTagsCallCount()).To(Equal(1))
+			expectedTags := originalTags
+			expectedTags.PlanID = updateData.Details.PlanID
+			Expect(fakeAivenClient.UpdateServiceTagsArgsForCall(0).Tags).To(Equal(expectedTags))
+		})
+
+		It("should return an error if the client returns error", func() {
+			updateData := provider.UpdateData{
+				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
+				Details: domain.UpdateDetails{
+					ServiceID:      "uuid-1",
+					PlanID:         "uuid-3",
+					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
+					RawParameters:  nil,
+				},
+			}
 			fakeAivenClient.UpdateServiceReturnsOnCall(0, "", errors.New("some bad thing"))
 
-			_, err := aivenProvider.Update(context.Background(), updateData, updateDetails)
+			_, err := aivenProvider.Update(context.Background(), updateData, true)
 
 			Expect(err).To(HaveOccurred())
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
@@ -498,12 +663,12 @@ var _ = Describe("Provider", func() {
 					ServiceID:      "uuid-1",
 					PlanID:         "uuid-3",
 					PreviousValues: domain.PreviousValues{PlanID: "uuid-2"},
+					RawParameters:  nil,
 				},
 			}
-			updateDetails.RawParameters = nil
 			fakeAivenClient.UpdateServiceReturnsOnCall(0, "", aiven.ErrInvalidUpdate{"not-valid"})
 
-			_, err := aivenProvider.Update(context.Background(), updateData, updateDetails)
+			_, err := aivenProvider.Update(context.Background(), updateData, true)
 
 			expectedErr := apiresponses.NewFailureResponseBuilder(
 				aiven.ErrInvalidUpdate{"not-valid"},
@@ -583,6 +748,36 @@ var _ = Describe("Provider", func() {
 		})
 	})
 
+	Describe("checkPermissionsFromTags", func() {
+		var provisionData provider.ProvisionData
+		BeforeEach(func() {
+			provisionData = provider.ProvisionData{
+				Details: domain.ProvisionDetails{
+					OrganizationGUID: "my-organization",
+					SpaceGUID:        "my-space",
+				},
+			}
+		})
+		It("should error when the org ids don't match", func() {
+			err := aivenProvider.CheckPermissionsFromTags(
+				provisionData.Details,
+				&aiven.ServiceTags{
+					OrganizationID: "not-my-org",
+				},
+			)
+			Expect(err).To(HaveOccurred())
+		})
+		It("should error when the org ids match but the space IDs don't", func() {
+			err := aivenProvider.CheckPermissionsFromTags(
+				provisionData.Details,
+				&aiven.ServiceTags{
+					OrganizationID: provisionData.Details.OrganizationGUID,
+					SpaceID:        "not-this-space",
+				},
+			)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 	Describe("The ParseIPWhitelist function", func() {
 		It("parses an empty string as an empty list", func() {
 			Expect(provider.ParseIPWhitelist("")).
@@ -618,4 +813,12 @@ var _ = Describe("Provider", func() {
 		})
 
 	})
+
+	DescribeTable("The buildServiceName function",
+		func(instanceId, expected string) {
+			Expect(aivenProvider.BuildServiceName(instanceId)).To(Equal(expected))
+		},
+		Entry("combines prefix and instanceId", "09e1993e-62e2-4040-adf2-4d3ec741efe6", "env-09e1993e-62e2-4040-adf2-4d3ec741efe6"),
+		Entry("downcases everything", "09E1993E-62E2-4040-ADF2-4D3EC741EFE6", "env-09e1993e-62e2-4040-adf2-4d3ec741efe6"),
+	)
 })
