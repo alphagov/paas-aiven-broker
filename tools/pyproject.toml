@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "aiven-broker-tools"
+version = "0.1.0"
+description = ""
+authors = ["Tom Whitwell <tom.whitwell@digital.cabinet-office.gov.uk>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.27.1"
+
+[tool.poetry.dev-dependencies]
+black = "^21.12b0"
+pytest = "^6.2.5"
+pytest-mock = "^3.6.1"
+mock = "^4.0.3"
+requests-mock = "^1.9.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
