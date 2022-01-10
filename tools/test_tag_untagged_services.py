@@ -11,18 +11,18 @@ UNTAGGED_SERVICES = [{"service_name": "test-some-untagged-service-uuid"}]
 def test_correct_tags_generated_with_mocks(requests_mock):
 
     expected_tags = {
-        "broker_name": "test",
-        "deploy_env": "test",
+        "broker_name": "test-env",
+        "deploy_env": "test-env",
         "organization_id": "org-uuid",
         "plan_id": "plan-uuid",
         "restored_from_backup": "false",
         "restored_from_service": "",
         "restored_from_time": "0001-01-01T00:00:00Z",
-        "service_id": "service-uuid",
+        "service_id": "1cc3185f-744b-4527-8690-c5592b8b3abc",
         "space_id": "space-uuid",
     }
     cfapi = tag_untagged_services.CloudFoundryClient(
-        "https://api.testinstance.null", "dummy-key"
+        "https://api.testinstance.null", "dummy-key", "test-env"
     )
 
     requests_mock.get(
@@ -47,7 +47,9 @@ def test_correct_tags_generated_with_mocks(requests_mock):
         },
     )
     assert (
-        tag_untagged_services.generate_basic_tags(cfapi, "test-service-uuid")
+        tag_untagged_services.generate_basic_tags(
+            cfapi, "test-env-1cc3185f-744b-4527-8690-c5592b8b3abc"
+        )
         == expected_tags
     )
 
@@ -67,7 +69,11 @@ def test_correct_tags_generated_live():
     cf_auth = os.getenv("CF_AUTH")
     assert cf_auth is not None
     assert cf_auth.startswith("bearer ")
-    cf_client = tag_untagged_services.CloudFoundryClient(cf_api_baseurl, cf_auth)
+    deploy_env = os.getenv("DEPLOY_ENV")
+    assert deploy_env is not None
+    cf_client = tag_untagged_services.CloudFoundryClient(
+        cf_api_baseurl, cf_auth, deploy_env
+    )
 
     correct_tags = aiven_client.service_tags(SERVICE_NAME)
 
