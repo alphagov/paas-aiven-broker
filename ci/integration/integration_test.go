@@ -13,7 +13,6 @@ import (
 	"code.cloudfoundry.org/lager"
 	broker "github.com/alphagov/paas-aiven-broker/broker"
 	brokertesting "github.com/alphagov/paas-aiven-broker/broker/testing"
-	"github.com/alphagov/paas-aiven-broker/client/elasticsearch"
 	"github.com/alphagov/paas-aiven-broker/client/opensearch"
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/pivotal-cf/brokerapi"
@@ -30,10 +29,6 @@ const (
 
 	orgGUID   = "test-org-guid"
 	spaceGUID = "test-space-guid"
-
-	elasticsearchServiceGUID     = "uuid-elasticsearch-service"
-	elasticsearchInitialPlanGUID = "uuid-basic-elasticsearch-7"
-	elasticsearchUpgradePlanGUID = "uuid-supra-elasticsearch-7"
 
 	openSearchServiceGUID     = "uuid-opensearch-service"
 	openSearchInitialPlanGUID = "uuid-basic-opensearch-1"
@@ -52,22 +47,6 @@ var _ = Describe("Broker", func() {
 		"name": "aiven-broker",
 		"catalog": {
 			"services": [{
-				"id": "%s",
-				"name": "elasticsearch",
-				"plan_updateable": true,
-				"plans": [{
-					"id": "%s",
-					"name": "basic-7",
-					"aiven_plan": "startup-4",
-					"elasticsearch_version": "7"
-				}, {
-					"id": "%s",
-					"name": "supra-7",
-					"aiven_plan": "startup-8",
-					"elasticsearch_version": "7"
-				}]
-			},
-			{
 				"id": "%s",
 				"name": "opensearch",
 				"plan_updateable": true,
@@ -95,9 +74,6 @@ var _ = Describe("Broker", func() {
 			}]
 		}
 	}`,
-		elasticsearchServiceGUID,
-		elasticsearchInitialPlanGUID, elasticsearchUpgradePlanGUID,
-
 		openSearchServiceGUID,
 		openSearchInitialPlanGUID, openSearchUpgradePlanGUID,
 
@@ -106,19 +82,15 @@ var _ = Describe("Broker", func() {
 	)
 
 	var (
-		instanceID     string
-		forkinstanceID string
-		bindingID      string
-		forkBindingID  string
-		aivenProvider  *provider.AivenProvider
-		brokerTester   brokertesting.BrokerTester
+		instanceID    string
+		bindingID     string
+		aivenProvider *provider.AivenProvider
+		brokerTester  brokertesting.BrokerTester
 	)
 
 	BeforeEach(func() {
 		instanceID = uuid.NewV4().String()
-		forkinstanceID = uuid.NewV4().String()
 		bindingID = uuid.NewV4().String()
-		forkBindingID = uuid.NewV4().String()
 
 		By("initializing")
 		brokerConfig, err := broker.NewConfig(strings.NewReader(configJSON))
@@ -138,293 +110,6 @@ var _ = Describe("Broker", func() {
 			Username: brokerConfig.API.BasicAuthUsername,
 			Password: brokerConfig.API.BasicAuthPassword,
 		}, brokerServer)
-	})
-
-	Context("Elasticsearch", func() {
-		const (
-			putData = `{"user":"kimchy","post_date":"2009-11-15T14:12:12","message":"trying out Elasticsearch"}`
-		)
-
-		AfterEach(func() {
-			// Ensure the instance gets cleaned up on test failures
-			_ = brokerTester.Deprovision(
-				instanceID,
-				elasticsearchServiceGUID,
-				elasticsearchInitialPlanGUID,
-				asyncAllowed,
-			)
-			_ = brokerTester.Deprovision(
-				forkinstanceID,
-				openSearchServiceGUID,
-				openSearchInitialPlanGUID,
-				asyncAllowed,
-			)
-		})
-
-		It("should manage the lifecycle of an Elasticsearch cluster", func() {
-			egressIP := os.Getenv("EGRESS_IP")
-			Expect(egressIP).ToNot(BeEmpty())
-
-			os.Setenv("IP_WHITELIST", egressIP)
-			defer os.Unsetenv("IP_WHITELIST")
-
-			By("Provisioning")
-			res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
-				ServiceID:        elasticsearchServiceGUID,
-				PlanID:           elasticsearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			}, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
-
-			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
-				State:       brokerapi.Succeeded,
-				Description: "Last operation succeeded",
-			})
-
-			By("Binding")
-			res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID:        elasticsearchServiceGUID,
-				PlanID:           elasticsearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			})
-			Expect(res.Code).To(Equal(http.StatusCreated))
-
-			parsedResponse := BindingResponse{}
-			err := json.NewDecoder(res.Body).Decode(&parsedResponse)
-			Expect(err).ToNot(HaveOccurred())
-
-			// Ensure returned credentials follow guidelines in https://docs.cloudfoundry.org/services/binding-credentials.html
-			var str string
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("uri", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("hostname", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("port", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("username", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("password", BeAssignableToTypeOf(str)))
-
-			elasticsearchClient := elasticsearch.New(parsedResponse.Credentials["uri"].(string), nil)
-
-			By("ensuring credentials allow writing data")
-			putURI := elasticsearchClient.URI + "/twitter/tweet/1?op_type=create"
-			request, err := http.NewRequest("PUT", putURI, strings.NewReader(putData))
-			Expect(err).NotTo(HaveOccurred())
-			request.Header.Set("Content-Type", "application/json")
-			resp, err := elasticsearchClient.Do(request)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-
-			By("ensuring credentials allow reading data")
-			getURI := elasticsearchClient.URI + "/twitter/tweet/1"
-			get, err := elasticsearchClient.Get(getURI)
-			Expect(err).NotTo(HaveOccurred())
-			defer get.Body.Close()
-			Expect(get.StatusCode).To(Equal(http.StatusOK))
-			body, err := ioutil.ReadAll(get.Body)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(body).To(ContainSubstring(putData))
-
-			By("polling for backup completion before updating")
-			pollForBackupCompletion(instanceID, aivenProvider)
-
-			By("updating")
-			res = brokerTester.Update(instanceID, brokertesting.RequestBody{
-				ServiceID:        elasticsearchServiceGUID,
-				PlanID:           elasticsearchUpgradePlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			}, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
-
-			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
-				State:       brokerapi.Succeeded,
-				Description: "Last operation succeeded",
-			})
-
-			By("checking the version has actually been updated")
-			version, err := elasticsearchClient.Version()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(version).To(HavePrefix("7."))
-
-			By("Unbinding")
-			res = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID:        elasticsearchServiceGUID,
-				PlanID:           elasticsearchUpgradePlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			})
-			Expect(res.Code).To(Equal(http.StatusOK))
-
-			By("Forking to opensearch")
-			res = brokerTester.Provision(forkinstanceID, brokertesting.RequestBody{
-				ServiceID:        openSearchServiceGUID,
-				PlanID:           openSearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-				RawParameters:    json.RawMessage(fmt.Sprintf(`{"restore_from_latest_backup_of": "%s"}`, instanceID)),
-			}, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
-
-			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
-				State:       brokerapi.Succeeded,
-				Description: "Last operation succeeded",
-			})
-
-			By("Deprovisioning the original")
-			res = brokerTester.Deprovision(instanceID, elasticsearchServiceGUID, elasticsearchUpgradePlanGUID, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
-			deprovisionResponse := apiresponses.DeprovisionResponse{}
-			err = json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, deprovisionResponse.OperationData, apiresponses.LastOperationResponse{
-				State:       brokerapi.Succeeded,
-				Description: "Service has been deleted",
-			})
-
-			By("Waiting 5 minutes for the restore to complete")
-			// Here be race conditions. I'm not brain enough to do this without just blindly waiting for a while
-			time.Sleep(5 * time.Minute)
-
-			By("Binding to the fork")
-			res = brokerTester.Bind(forkinstanceID, forkBindingID, brokertesting.RequestBody{
-				ServiceID:        openSearchServiceGUID,
-				PlanID:           openSearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			})
-			Expect(res.Code).To(Equal(http.StatusCreated))
-
-			parsedResponse = BindingResponse{}
-			err = json.NewDecoder(res.Body).Decode(&parsedResponse)
-			Expect(err).ToNot(HaveOccurred())
-
-			// Ensure returned credentials follow guidelines in https://docs.cloudfoundry.org/services/binding-credentials.html
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("uri", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("hostname", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("port", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("username", BeAssignableToTypeOf(str)))
-			Expect(parsedResponse.Credentials).To(HaveKeyWithValue("password", BeAssignableToTypeOf(str)))
-
-			openSearchClient := opensearch.New(parsedResponse.Credentials["uri"].(string), nil)
-
-			By("ensuring credentials allow writing data to the fork")
-			putURI = openSearchClient.URI + "/twitter/tweet/2?op_type=create"
-			request, err = http.NewRequest("PUT", putURI, strings.NewReader(putData))
-			Expect(err).NotTo(HaveOccurred())
-			request.Header.Set("Content-Type", "application/json")
-			resp, err = openSearchClient.Do(request)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp.Body.Close()
-			Expect(resp.StatusCode).To(Equal(http.StatusCreated))
-
-			By("ensuring credentials allow reading data from the fork")
-			getURI = openSearchClient.URI + "/twitter/tweet/2"
-			get, err = openSearchClient.Get(getURI)
-			Expect(err).NotTo(HaveOccurred())
-			defer get.Body.Close()
-			Expect(get.StatusCode).To(Equal(http.StatusOK))
-			body, err = ioutil.ReadAll(get.Body)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(body).To(ContainSubstring(putData))
-
-			/*
-				It would be lovely if we could do this, but alas, we'd have to wait
-				for a backup to complete before creating the fork.
-				I was hoping there would be a way to trigger a backup manually,
-				but Aiven does not offer this functionality. The only backups are
-				the automatic hourly ones.
-
-
-				By("ensuring the data from the original exists on the fork")
-				getURI = openSearchClient.URI + "/twitter/tweet/1"
-				get, err = openSearchClient.Get(getURI)
-				Expect(err).NotTo(HaveOccurred())
-				defer get.Body.Close()
-				Expect(get.StatusCode).To(Equal(http.StatusOK))
-				body, err = ioutil.ReadAll(get.Body)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(body).To(ContainSubstring(putData))
-			*/
-
-			By("Unbinding")
-			res = brokerTester.Unbind(forkinstanceID, forkBindingID, brokertesting.RequestBody{
-				ServiceID:        openSearchServiceGUID,
-				PlanID:           openSearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			})
-			Expect(res.Code).To(Equal(http.StatusOK))
-
-			By("Deprovisioning the fork")
-			res = brokerTester.Deprovision(forkinstanceID, openSearchServiceGUID, openSearchInitialPlanGUID, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
-			deprovisionResponse = apiresponses.DeprovisionResponse{}
-			err = json.Unmarshal(res.Body.Bytes(), &deprovisionResponse)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Polling for success")
-			pollForCompletion(brokerTester, forkinstanceID, deprovisionResponse.OperationData, apiresponses.LastOperationResponse{
-				State:       brokerapi.Succeeded,
-				Description: "Service has been deleted",
-			})
-
-			By("Returning a 410 response when trying to delete a non-existent instance")
-			res = brokerTester.Deprovision(instanceID, elasticsearchServiceGUID, elasticsearchUpgradePlanGUID, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusGone))
-		})
-
-		// 99% of this IP whitelisting test is stolen from the lifecycle mgmt test, below.
-		// Refactor opportunity!
-		It("should enforce IP whitelisting if configured to do so", func() {
-			os.Setenv("IP_WHITELIST", "8.8.8.8")
-			defer os.Unsetenv("IP_WHITELIST")
-
-			By("Provisioning")
-
-			res := brokerTester.Provision(instanceID, brokertesting.RequestBody{
-				ServiceID:        elasticsearchServiceGUID,
-				PlanID:           elasticsearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			}, asyncAllowed)
-			Expect(res.Code).To(Equal(http.StatusAccepted))
-
-			By("Polling for success")
-			pollForCompletion(brokerTester, instanceID, "", apiresponses.LastOperationResponse{
-				State:       brokerapi.Succeeded,
-				Description: "Last operation succeeded",
-			})
-
-			By("Binding")
-			res = brokerTester.Bind(instanceID, bindingID, brokertesting.RequestBody{
-				ServiceID:        elasticsearchServiceGUID,
-				PlanID:           elasticsearchInitialPlanGUID,
-				OrganizationGUID: orgGUID,
-				SpaceGUID:        spaceGUID,
-			})
-			Expect(res.Code).To(Equal(http.StatusCreated))
-
-			parsedResponse := BindingResponse{}
-			err := json.NewDecoder(res.Body).Decode(&parsedResponse)
-			Expect(err).ToNot(HaveOccurred())
-
-			elasticsearchClient := elasticsearch.New(parsedResponse.Credentials["uri"].(string), nil)
-
-			By("Ensuring we can't reach the provisioned service")
-			getURI := elasticsearchClient.URI + "/"
-			_, err = elasticsearchClient.Get(getURI)
-			Expect(err).To(HaveOccurred())
-
-			netErr, ok := err.(net.Error)
-			Expect(ok).To(BeTrue())
-			Expect(netErr.Timeout()).To(BeTrue())
-		})
 	})
 
 	Context("OpenSearch", func() {
