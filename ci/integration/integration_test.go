@@ -19,7 +19,7 @@ import (
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 	uuid "github.com/satori/go.uuid"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
