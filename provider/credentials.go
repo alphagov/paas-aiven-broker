@@ -64,7 +64,7 @@ func BuildCredentials(
 	credentials.Username = username
 	credentials.Password = password
 
-	if serviceType == "elasticsearch" || serviceType == "opensearch" {
+	if serviceType == "opensearch" {
 		// nothing to do
 	} else if serviceType == "influxdb" {
 		addInfluxDBCredentials(&credentials)

@@ -23,13 +23,6 @@ var _ = Describe("Config", func() {
 							"catalog": {
 								"services": [
 									{
-										"name": "elasticsearch",
-										"plans": [{
-											"aiven_plan": "startup-1",
-											"elasticsearch_version": "6"
-										}]
-									},
-									{
 										"name": "opensearch",
 										"plans": [{
 											"aiven_plan": "startup-2",
@@ -47,10 +40,6 @@ var _ = Describe("Config", func() {
 						}
 					`)
 
-			elasticsearchPlanSpecificConfig := provider.PlanSpecificConfig{}
-			elasticsearchPlanSpecificConfig.AivenPlan = "startup-1"
-			elasticsearchPlanSpecificConfig.ElasticsearchVersion = "6"
-
 			opensearchPlanSpecificConfig := provider.PlanSpecificConfig{}
 			opensearchPlanSpecificConfig.AivenPlan = "startup-2"
 			opensearchPlanSpecificConfig.OpenSearchVersion = "1"
@@ -67,16 +56,6 @@ var _ = Describe("Config", func() {
 				Project:           "project",
 				Catalog: provider.Catalog{
 					Services: []provider.Service{
-						{
-							Service: domain.Service{
-								Name: "elasticsearch",
-							},
-							Plans: []provider.Plan{
-								{
-									PlanSpecificConfig: elasticsearchPlanSpecificConfig,
-								},
-							},
-						},
 						{
 							Service: domain.Service{
 								Name: "opensearch",
@@ -138,7 +117,7 @@ var _ = Describe("Config", func() {
 						"catalog": {
 							"services": [
 								{
-									"name": "elasticsearch",
+									"name": "opensearch",
 									"plans": []
 								}
 							]
@@ -146,7 +125,7 @@ var _ = Describe("Config", func() {
 					}
 				`)
 			_, err := provider.DecodeConfig(rawConfig)
-			Expect(err).To(MatchError("Config error: at least one plan must be configured for service elasticsearch"))
+			Expect(err).To(MatchError("Config error: at least one plan must be configured for service opensearch"))
 		})
 	})
 
@@ -176,7 +155,7 @@ var _ = Describe("Config", func() {
 							"catalog": {
 								"services": [
 									{
-										"name": "elasticsearch",
+										"name": "opensearch",
 										"plans": [{"name": "plan-a"}]
 									}
 								]
@@ -185,26 +164,6 @@ var _ = Describe("Config", func() {
 					`)
 			_, err := provider.DecodeConfig(rawConfig)
 			Expect(err).To(MatchError("Config error: every plan must specify an `aiven_plan`"))
-		})
-
-		Context("when the service is elasticsearch", func() {
-			It("returns an error if a plan is missing the Elasticsearch version", func() {
-				rawConfig = json.RawMessage(`
-							{
-								"cloud": "aws-eu-west-1",
-								"catalog": {
-									"services": [
-										{
-											"name": "elasticsearch",
-											"plans": [{"aiven_plan": "plan-a"}]
-										}
-									]
-								}
-							}
-						`)
-				_, err := provider.DecodeConfig(rawConfig)
-				Expect(err).To(MatchError("Config error: every elasticsearch plan must specify an `elasticsearch_version`"))
-			})
 		})
 
 		Context("when the service is opensearch", func() {
@@ -228,7 +187,7 @@ var _ = Describe("Config", func() {
 		})
 
 		Context("when the service is InfluxDB", func() {
-			It("does not care about the Elasticsearch version", func() {
+			It("does not care about the OpenSearch version", func() {
 				rawConfig = json.RawMessage(`
 							{
 								"cloud": "aws-eu-west-1",

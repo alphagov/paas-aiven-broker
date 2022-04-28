@@ -10,36 +10,6 @@ import (
 )
 
 var _ = Describe("Credentials", func() {
-	Context("Elasticsearch", func() {
-		const (
-			username = "hich"
-			password = "rickey"
-
-			hostname = "elasticsearch.aiven.io"
-			port     = "2702"
-		)
-
-		It("should return credentials", func() {
-			credentials, err := provider.BuildCredentials(
-				"elasticsearch",
-				username, password,
-				hostname, port,
-			)
-
-			Expect(err).NotTo(HaveOccurred())
-
-			jsonCreds, err := json.Marshal(credentials)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(string(jsonCreds)).To(MatchJSON(
-				`{
-					"uri":"https://hich:rickey@elasticsearch.aiven.io:2702",
-					"hostname":"elasticsearch.aiven.io", "port":"2702",
-					"username":"hich","password":"rickey"
-				}`,
-			))
-		})
-	})
 
 	Context("OpenSearch", func() {
 		const (

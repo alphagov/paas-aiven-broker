@@ -35,11 +35,11 @@ var _ = Describe("Provider", func() {
 	BeforeEach(func() {
 		planSpecificConfig1 := provider.PlanSpecificConfig{}
 		planSpecificConfig1.AivenPlan = "startup-1"
-		planSpecificConfig1.ElasticsearchVersion = "6"
+		planSpecificConfig1.OpenSearchVersion = "1"
 
 		planSpecificConfig2 := provider.PlanSpecificConfig{}
 		planSpecificConfig2.AivenPlan = "startup-2"
-		planSpecificConfig2.ElasticsearchVersion = "6"
+		planSpecificConfig2.OpenSearchVersion = "1"
 
 		config = &provider.Config{
 			DeployEnv:         "env",
@@ -53,14 +53,14 @@ var _ = Describe("Provider", func() {
 							{
 								ServicePlan: domain.ServicePlan{
 									ID:   "uuid-2",
-									Name: "elasticsearch",
+									Name: "opensearch",
 								},
 								PlanSpecificConfig: planSpecificConfig1,
 							},
 							{
 								ServicePlan: domain.ServicePlan{
 									ID:   "uuid-3",
-									Name: "elasticsearch",
+									Name: "opensearch",
 								},
 								PlanSpecificConfig: planSpecificConfig2,
 							},
@@ -90,7 +90,7 @@ var _ = Describe("Provider", func() {
 		Context("passes the correct parameters to the Aiven client", func() {
 			provisionData := provider.ProvisionData{
 				InstanceID:    "09e1993e-62e2-4040-adf2-4d3ec741efe6",
-				Service:       domain.Service{ID: "uuid-1", Name: "elasticsearch"},
+				Service:       domain.Service{ID: "uuid-1", Name: "opensearch"},
 				Plan:          domain.ServicePlan{ID: "uuid-2"},
 				RawParameters: json.RawMessage{},
 				Details: domain.ProvisionDetails{
@@ -106,14 +106,14 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
 				userConfig := aiven.UserConfig{}
-				userConfig.ElasticsearchVersion = "6"
+				userConfig.OpenSearchVersion = "1"
 				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
 
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-					ServiceType: "elasticsearch",
+					ServiceType: "opensearch",
 					UserConfig:  userConfig,
 					Tags: aiven.ServiceTags{
 						DeployEnv:          config.DeployEnv,
@@ -138,14 +138,14 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
 				userConfig := aiven.UserConfig{}
-				userConfig.ElasticsearchVersion = "6"
+				userConfig.OpenSearchVersion = "1"
 				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8", "9.10.11.12"}
 
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-					ServiceType: "elasticsearch",
+					ServiceType: "opensearch",
 					UserConfig:  userConfig,
 					Tags: aiven.ServiceTags{
 						DeployEnv:          config.DeployEnv,
@@ -170,14 +170,14 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
 				userConfig := aiven.UserConfig{}
-				userConfig.ElasticsearchVersion = "6"
+				userConfig.OpenSearchVersion = "1"
 				userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8", "9.10.11.12", "13.14.15.16"}
 
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-					ServiceType: "elasticsearch",
+					ServiceType: "opensearch",
 					UserConfig:  userConfig,
 					Tags: aiven.ServiceTags{
 						DeployEnv:          config.DeployEnv,
@@ -202,14 +202,14 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
 				userConfig := aiven.UserConfig{}
-				userConfig.ElasticsearchVersion = "6"
+				userConfig.OpenSearchVersion = "1"
 				userConfig.IPFilter = []string{"9.10.11.12"}
 
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-					ServiceType: "elasticsearch",
+					ServiceType: "opensearch",
 					UserConfig:  userConfig,
 					Tags: aiven.ServiceTags{
 						DeployEnv:          config.DeployEnv,
@@ -233,14 +233,14 @@ var _ = Describe("Provider", func() {
 				Expect(fakeAivenClient.CreateServiceCallCount()).To(Equal(1))
 
 				userConfig := aiven.UserConfig{}
-				userConfig.ElasticsearchVersion = "6"
+				userConfig.OpenSearchVersion = "1"
 				userConfig.IPFilter = []string{}
 
 				expectedParameters := &aiven.CreateServiceInput{
 					Cloud:       config.Cloud,
 					Plan:        "startup-1",
 					ServiceName: "env-09e1993e-62e2-4040-adf2-4d3ec741efe6",
-					ServiceType: "elasticsearch",
+					ServiceType: "opensearch",
 					UserConfig:  userConfig,
 					Tags: aiven.ServiceTags{
 						DeployEnv:          config.DeployEnv,
@@ -262,7 +262,7 @@ var _ = Describe("Provider", func() {
 				BeforeEach(func() {
 					provisionData.Details.RawParameters = json.RawMessage(`{"restore_from_latest_backup_of": "source-service-name"}`)
 					getServiceReturnData = aiven.Service{
-						ServiceType: "elasticsearch",
+						ServiceType: "opensearch",
 						Backups: []aiven.ServiceBackup{
 							{
 								Name: "first backup",
@@ -325,12 +325,12 @@ var _ = Describe("Provider", func() {
 					Expect(fakeAivenClient.ForkServiceCallCount()).To(Equal(1))
 					Expect(fakeAivenClient.ForkServiceArgsForCall(0).UserConfig.BackupName).To(Equal("latest"))
 				})
-				It("should error when trying to copy from influxdb to *search", func() {
+				It("should error when trying to copy from influxdb to opensearch", func() {
 					getServiceReturnData.ServiceType = "influxdb"
 					fakeAivenClient.GetServiceReturns(&getServiceReturnData, nil)
 					_, err := aivenProvider.Provision(context.Background(), provisionData, true)
 					Expect(err).To(HaveOccurred())
-					Expect(err).To(Equal(fmt.Errorf("You cannot restore an influxdb backup to elasticsearch")))
+					Expect(err).To(Equal(fmt.Errorf("You cannot restore an influxdb backup to opensearch")))
 				})
 			})
 		})
@@ -420,7 +420,7 @@ var _ = Describe("Provider", func() {
 					Host: testESHost,
 					Port: testESPort,
 				},
-				ServiceType: "elasticsearch",
+				ServiceType: "opensearch",
 			}, nil)
 
 			bindCtx, bindCancel = context.WithTimeout(context.Background(), 5*time.Second)
@@ -574,7 +574,7 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
 			userConfig := aiven.UserConfig{}
-			userConfig.ElasticsearchVersion = "6"
+			userConfig.OpenSearchVersion = "1"
 			userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8"}
 
 			expectedParameters := &aiven.UpdateServiceInput{
@@ -599,7 +599,7 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.UpdateServiceCallCount()).To(Equal(1))
 
 			userConfig := aiven.UserConfig{}
-			userConfig.ElasticsearchVersion = "6"
+			userConfig.OpenSearchVersion = "1"
 			userConfig.IPFilter = []string{"1.2.3.4", "5.6.7.8", "9.10.11.12"}
 
 			expectedParameters := &aiven.UpdateServiceInput{

@@ -7,9 +7,6 @@ type CommonUserConfig struct {
 	BackupName        string   `json:"recovery_basebackup_name,omitempty"`
 }
 
-type ElasticsearchUserConfig struct {
-	ElasticsearchVersion string `json:"elasticsearch_version,omitempty"`
-}
 type OpenSearchUserConfig struct {
 	OpenSearchVersion string `json:"opensearch_version,omitempty"`
 }
@@ -18,7 +15,6 @@ type InfluxDBUserConfig struct{}
 
 type UserConfig struct {
 	CommonUserConfig
-	ElasticsearchUserConfig
 	OpenSearchUserConfig
 	InfluxDBUserConfig
 }
