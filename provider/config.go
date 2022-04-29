@@ -36,10 +36,6 @@ type Plan struct {
 
 type AivenServiceCommonConfig struct{}
 
-type AivenServiceElasticsearchConfig struct {
-	ElasticsearchVersion string `json:"elasticsearch_version"`
-}
-
 type AivenServiceOpenSearchConfig struct {
 	OpenSearchVersion string `json:"opensearch_version"`
 }
@@ -50,7 +46,6 @@ type PlanSpecificConfig struct {
 	AivenPlan string `json:"aiven_plan"`
 
 	AivenServiceCommonConfig
-	AivenServiceElasticsearchConfig
 	AivenServiceOpenSearchConfig
 	AivenServiceInfluxDBConfig
 }
@@ -84,9 +79,6 @@ func DecodeConfig(b []byte) (*Config, error) {
 				return config, errors.New("Config error: every plan must specify an `aiven_plan`")
 			}
 
-			if service.Name == "elasticsearch" && plan.ElasticsearchVersion == "" {
-				return config, errors.New("Config error: every elasticsearch plan must specify an `elasticsearch_version`")
-			}
 			if service.Name == "opensearch" && plan.OpenSearchVersion == "" {
 				return config, errors.New("Config error: every opensearch plan must specify an `opensearch_version`")
 			}

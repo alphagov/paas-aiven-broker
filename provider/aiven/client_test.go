@@ -35,7 +35,7 @@ var _ = Describe("Client", func() {
 	Describe("CreateService", func() {
 		It("should make a valid request", func() {
 			userConfig := aiven.UserConfig{}
-			userConfig.ElasticsearchVersion = "6"
+			userConfig.OpenSearchVersion = "1"
 			userConfig.IPFilter = []string{"1.2.3.4"}
 
 			createServiceInput := &aiven.CreateServiceInput{
@@ -77,7 +77,7 @@ var _ = Describe("Client", func() {
 	Describe("ForkService", func() {
 		It("should make a valid request", func() {
 			userConfig := aiven.UserConfig{}
-			userConfig.ElasticsearchVersion = "6"
+			userConfig.OpenSearchVersion = "1"
 			userConfig.IPFilter = []string{"1.2.3.4"}
 			userConfig.ForkProject = "my-project"
 			userConfig.BackupServiceName = "some-instance"
@@ -383,7 +383,7 @@ var _ = Describe("Client", func() {
 	Describe("Update Service", func() {
 		It("should make a valid request", func() {
 			userConfig := aiven.UserConfig{}
-			userConfig.ElasticsearchVersion = "6"
+			userConfig.OpenSearchVersion = "1"
 			userConfig.IPFilter = []string{"1.2.3.4"}
 
 			updateServiceInput := &aiven.UpdateServiceInput{
@@ -425,11 +425,11 @@ var _ = Describe("Client", func() {
 				{
 					"errors" : [
 							{
-								"message" : "Elasticsearch major version downgrade is not possible",
+								"message" : "Opensearch major version downgrade is not possible",
 								"status" : 400
 							}
 					],
-					"message" : "Elasticsearch major version downgrade is not possible"
+					"message" : "Opensearch major version downgrade is not possible"
 				}
 				`),
 			))
@@ -437,7 +437,7 @@ var _ = Describe("Client", func() {
 			actualResponse, err := aivenClient.UpdateService(updateServiceInput)
 
 			Expect(err).To(MatchError(
-				aiven.ErrInvalidUpdate{"Invalid Update: Elasticsearch major version downgrade is not possible"},
+				aiven.ErrInvalidUpdate{"Invalid Update: Opensearch major version downgrade is not possible"},
 			))
 			Expect(actualResponse).To(Equal(""))
 		})

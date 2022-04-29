@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/lager"
-	"github.com/alphagov/paas-aiven-broker/client/elasticsearch"
 	"github.com/alphagov/paas-aiven-broker/client/influxdb"
 	"github.com/alphagov/paas-aiven-broker/client/opensearch"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
@@ -113,9 +112,7 @@ func (ap *AivenProvider) Provision(
 	}
 	userConfig.IPFilter = filterlist
 
-	if provisionData.Service.Name == "elasticsearch" {
-		userConfig.ElasticsearchVersion = plan.ElasticsearchVersion
-	} else if provisionData.Service.Name == "opensearch" {
+	if provisionData.Service.Name == "opensearch" {
 		userConfig.OpenSearchVersion = plan.OpenSearchVersion
 	} else if provisionData.Service.Name == "influxdb" {
 		// Nothing to do
@@ -227,13 +224,7 @@ func ensureUserAvailability(
 	serviceType string,
 	credentials Credentials,
 ) error {
-	if serviceType == "elasticsearch" {
-		return tryAvailability(ctx, func() error {
-			client := elasticsearch.New(credentials.URI, nil)
-			_, err := client.Version()
-			return err
-		})
-	} else if serviceType == "opensearch" {
+	if serviceType == "opensearch" {
 		return tryAvailability(ctx, func() error {
 			client := opensearch.New(credentials.URI, nil)
 			_, err := client.Version()
@@ -310,8 +301,7 @@ func (ap *AivenProvider) Update(
 	}
 	userConfig.IPFilter = filterlist
 
-	userConfig.ElasticsearchVersion = plan.ElasticsearchVersion // Pass empty version through if not InfluxDB
-	userConfig.OpenSearchVersion = plan.OpenSearchVersion       // Pass empty version through if not InfluxDB
+	userConfig.OpenSearchVersion = plan.OpenSearchVersion // Pass empty version through if not InfluxDB
 
 	_, err = ap.Client.UpdateService(&aiven.UpdateServiceInput{
 		ServiceName: ap.BuildServiceName(updateData.InstanceID),
@@ -402,7 +392,7 @@ func (ap *AivenProvider) forkFromBackup(
 		return fmt.Errorf("Invalid guid: '%s'", *provisionParameters.RestoreFromLatestBackupOf)
 	}
 	if service := provisionData.Service.Name; service != "" {
-		if service != "elasticsearch" && service != "opensearch" {
+		if service != "opensearch" {
 			return fmt.Errorf("Restore from backup not supported for service '%s'", service)
 		}
 	}

@@ -24,7 +24,7 @@ For unit testing run:
 make unit
 ```
 
-For integration testing you need to set environment variables (see [`provider/config.go`](https://github.com/alphagov/paas-aiven-broker/blob/8de53e8afb047edf47b8d5bf17b4105dc1507dc6/provider/config.go#L70-L90) for details) and run:
+For integration testing you need to set environment variables (see [`provider/config.go`](https://github.com/alphagov/paas-aiven-broker/blob/main/provider/config.go#L70-L90) for details) and run:
 
 ```bash
 make integration

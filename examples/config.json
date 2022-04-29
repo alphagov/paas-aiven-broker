@@ -8,8 +8,8 @@
         "catalog": {
                 "services": [{
                         "id": "uuid-1",
-                        "name": "elasticsearch",
-                        "description": "Elasticsearch instances provisioned via Aiven",
+                        "name": "opensearch",
+                        "description": "Opensearch instances provisioned via Aiven",
                         "bindable": true,
                         "plan_updateable": true,
                         "requires": [],
@@ -18,7 +18,7 @@
                                 "id": "uuid-2",
                                 "name": "basic",
                                 "aiven_plan": "startup-1",
-                                "elasticsearch_version": "6",
+                                "opensearch_version": "1",
                                 "description": "1 CPU, 1 GB RAM, 16 GB SSD",
                                 "metadata": {}
                         }]
