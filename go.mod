@@ -1,6 +1,6 @@
 module github.com/alphagov/paas-aiven-broker
 
-go 1.17
+go 1.18
 
 require (
 	code.cloudfoundry.org/lager v1.1.0
@@ -15,7 +15,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
-	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
 	golang.org/x/sys v0.0.0-20210112080510-489259a85091 // indirect
 	golang.org/x/text v0.3.3 // indirect
 	gopkg.in/jarcoal/httpmock.v1 v1.0.0-20180615191036-16f9a43967d6
