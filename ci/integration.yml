@@ -3,8 +3,8 @@ platform: linux
 image_resource:
   type: docker-image
   source:
-    repository: governmentpaas/cf-acceptance-tests
-    tag: c88f3e0b03558c987693fad3f180d9052b77342c
+    repository: ghcr.io/alphagov/paas/cf-acceptance-tests
+    tag: 85eda8449b6703ffa204d10ac5807749fa413fdd-ginkgo-v2
 inputs:
   - name: repo
 params:

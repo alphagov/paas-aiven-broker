@@ -11,7 +11,7 @@ unit: export BROKER_NAME=test
 unit: export AIVEN_API_TOKEN=token
 unit: export AIVEN_PROJECT=project
 unit:
-	ginkgo $(COMMAND) -r --skipPackage=ci $(PACKAGE)
+	ginkgo $(COMMAND) -r --skip-package=ci $(PACKAGE)
 
 .PHONY: generate-fakes
 generate-fakes:
