@@ -6,6 +6,23 @@ integration: export EGRESS_IP=$(shell curl --silent icanhazip.com)
 integration:
 	go run github.com/onsi/ginkgo/v2/ginkgo -p -nodes 4 ci/integration
 
+# ensure $TMPDIR is set - it is present on darwin but not linux
+ifeq ($(TMPDIR),)
+TMPDIR := /tmp/
+endif
+
+PASSWORD_STORE_DIR := $(HOME)/.paas-pass
+$(TMPDIR)/paas-aiven-broker_integration.env: Makefile ci/create_integration_envfile.sh
+	$(eval export PASSWORD_STORE_DIR=$(PASSWORD_STORE_DIR))
+	@ci/create_integration_envfile.sh $@
+
+# This target can be used locally to run the integration tests.
+# It will automatically create a temporary environment file, pulling
+# the necessary credentials from the password store.
+local_integration: $(TMPDIR)/paas-aiven-broker_integration.env
+	$(foreach line,$(shell cat $<),$(eval export $(line)))
+	@$(MAKE) integration
+
 unit: export DEPLOY_ENV=test
 unit: export BROKER_NAME=test
 unit: export AIVEN_API_TOKEN=token
