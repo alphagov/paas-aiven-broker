@@ -6,6 +6,10 @@ integration: export EGRESS_IP=$(shell curl --silent icanhazip.com)
 integration:
 	go run github.com/onsi/ginkgo/v2/ginkgo -p -nodes 4 ci/integration
 
+integration.env: Makefile ci/create_integration_envfile.sh
+	ci/create_integration_envfile.sh $@
+
+
 unit: export DEPLOY_ENV=test
 unit: export BROKER_NAME=test
 unit: export AIVEN_API_TOKEN=token
