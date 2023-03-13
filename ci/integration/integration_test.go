@@ -224,6 +224,15 @@ var _ = Describe("Broker", func() {
 			})
 			Expect(res.Code).To(Equal(http.StatusOK))
 
+			By("Returning a 410 response when trying to unbind a non-existent binding")
+			res = brokerTester.Unbind(instanceID, bindingID, brokertesting.RequestBody{
+				ServiceID:        openSearchServiceGUID,
+				PlanID:           openSearchUpgradePlanGUID,
+				OrganizationGUID: orgGUID,
+				SpaceGUID:        spaceGUID,
+			})
+			Expect(res.Code).To(Equal(http.StatusGone))
+
 			By("Deprovisioning")
 			res = brokerTester.Deprovision(instanceID, openSearchServiceGUID, openSearchUpgradePlanGUID, asyncAllowed)
 			Expect(res.Code).To(Equal(http.StatusAccepted))
@@ -404,6 +413,17 @@ var _ = Describe("Broker", func() {
 				},
 			)
 			Expect(res.Code).To(Equal(http.StatusOK))
+
+			By("Returning a 410 response when trying to unbind a non-existent binding")
+			res = brokerTester.Unbind(
+				instanceID,
+				bindingID,
+				brokertesting.RequestBody{
+					ServiceID: influxDBServiceGUID,
+					PlanID:    influxDBPlanGUID,
+				},
+			)
+			Expect(res.Code).To(Equal(http.StatusGone))
 
 			By("Deprovisioning")
 			res = brokerTester.Deprovision(

@@ -270,6 +270,9 @@ func (ap *AivenProvider) Unbind(ctx context.Context, unbindData UnbindData) (err
 		ServiceName: ap.BuildServiceName(unbindData.InstanceID),
 		Username:    unbindData.BindingID,
 	})
+	if err == aiven.ErrInstanceUserDoesNotExist {
+		return apiresponses.ErrBindingDoesNotExist
+	}
 	return err
 }
 

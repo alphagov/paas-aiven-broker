@@ -363,20 +363,20 @@ var _ = Describe("Client", func() {
 			Expect(actualResponse).To(Equal(""))
 		})
 
-		It("succeeds if an error saying the user does not exist is returned", func() {
+		It("returns ErrInstanceUserDoesNotExist if an error saying the user does not exist is returned", func() {
 			deleteServiceUserInput := &aiven.DeleteServiceUserInput{
 				ServiceName: "my-service",
 				Username:    "my-deleted-user",
 			}
-			response := `{"message": "Service user 'my-deleted-user' does not exist"}`
+			response := `{"errors":[{"message":"Service user does not exist","status":404}],"message":"Service user does not exist"}`
 			aivenAPI.AppendHandlers(ghttp.CombineHandlers(
 				ghttp.RespondWith(http.StatusForbidden, response),
 			))
 
 			actualResponse, err := aivenClient.DeleteServiceUser(deleteServiceUserInput)
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(actualResponse).To(Equal(response))
+			Expect(err).To(Equal(aiven.ErrInstanceUserDoesNotExist))
+			Expect(actualResponse).To(Equal(""))
 		})
 	})
 

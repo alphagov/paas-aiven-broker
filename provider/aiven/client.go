@@ -276,6 +276,8 @@ func (a *HttpClient) CreateServiceUser(params *CreateServiceUserInput) (string, 
 	return createServiceUserResponse.User.Password, nil
 }
 
+var ErrInstanceUserDoesNotExist = errors.New("Error: service instance user does not exist")
+
 func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, error) {
 	res, err := a.do("DELETE", fmt.Sprintf("/project/%s/service/%s/user/%s", a.Project, params.ServiceName, params.Username), nil)
 	if err != nil {
@@ -292,10 +294,15 @@ func (a *HttpClient) DeleteServiceUser(params *DeleteServiceUserInput) (string, 
 		var errorResponse AivenErrorResponse
 		jsonErr := json.Unmarshal(b, &errorResponse)
 
-		expectedMessageIfUserWasAlreadyDeleted := fmt.Sprintf("Service user '%s' does not exist", params.Username)
-		if jsonErr != nil || errorResponse.Message != expectedMessageIfUserWasAlreadyDeleted {
-			return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
+		// if this response changes (again), just call it quits and sniff for 404.
+		// the only reason we're not is in case we mistake "api not here at all"
+		// for "service user doesn't exist".
+		expectedMessageIfUserWasAlreadyDeleted := "Service user does not exist"
+		if jsonErr == nil && errorResponse.Message == expectedMessageIfUserWasAlreadyDeleted {
+			return "", ErrInstanceUserDoesNotExist
 		}
+
+		return "", fmt.Errorf("Error deleting service user: %d status code returned from Aiven: '%s'", res.StatusCode, b)
 	}
 
 	return string(b), nil

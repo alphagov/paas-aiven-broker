@@ -544,7 +544,18 @@ var _ = Describe("Provider", func() {
 			Expect(fakeAivenClient.DeleteServiceUserArgsForCall(0)).To(Equal(expectedDeleteServiceUserParameters))
 		})
 
-		It("errors if the client errors", func() {
+		It("returns ErrBindingDoesNotExist if client returns ErrInstanceUserDoesNotExist", func() {
+			unbindData := provider.UnbindData{
+				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
+				BindingID:  "D26EA3FB-AA78-451C-9ED0-233935ED388F",
+			}
+			fakeAivenClient.DeleteServiceUserReturnsOnCall(0, "", aiven.ErrInstanceUserDoesNotExist)
+
+			err := aivenProvider.Unbind(context.Background(), unbindData)
+			Expect(err).To(Equal(apiresponses.ErrBindingDoesNotExist))
+		})
+
+		It("errors if the client returns an unexpected error", func() {
 			unbindData := provider.UnbindData{
 				InstanceID: "09E1993E-62E2-4040-ADF2-4D3EC741EFE6",
 				BindingID:  "D26EA3FB-AA78-451C-9ED0-233935ED388F",
