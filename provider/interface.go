@@ -7,6 +7,8 @@ import (
 	"github.com/pivotal-cf/brokerapi/domain"
 )
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_service_provider.go . ServiceProvider
+
 type ServiceProvider interface {
 	Provision(context.Context, ProvisionData, bool) (result domain.ProvisionedServiceSpec, err error)
 	Deprovision(context.Context, DeprovisionData) (operationData string, err error)
