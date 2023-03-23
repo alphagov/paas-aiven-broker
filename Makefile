@@ -4,7 +4,10 @@ test: unit integration
 .PHONY: integration
 integration: export EGRESS_IP=$(shell curl --silent icanhazip.com)
 integration:
-	go run github.com/onsi/ginkgo/v2/ginkgo -p -nodes 4 ci/integration
+	go run github.com/onsi/ginkgo/v2/ginkgo \
+		-procs 4 --compilers 4 \
+		--poll-progress-after=120s --poll-progress-interval=30s \
+		ci/integration
 
 # ensure $TMPDIR is set - it is present on darwin but not linux
 ifeq ($(TMPDIR),)
