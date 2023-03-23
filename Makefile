@@ -24,6 +24,7 @@ $(TMPDIR)/paas-aiven-broker_integration.env: Makefile ci/create_integration_envf
 # the necessary credentials from the password store.
 local_integration: $(TMPDIR)/paas-aiven-broker_integration.env
 	$(foreach line,$(shell cat $<),$(eval export $(line)))
+	$(eval export BROKER_NAME=integration_local_$(shell git rev-parse --short --verify HEAD))
 	@$(MAKE) integration
 
 unit: export DEPLOY_ENV=test

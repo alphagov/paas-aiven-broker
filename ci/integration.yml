@@ -16,16 +16,20 @@ run:
     - -e
     - -c
     - |
-      DEPLOY_ENV=test
-      export DEPLOY_ENV
-      BROKER_NAME=test-broker
-      export BROKER_NAME
-      AIVEN_USERNAME=foo
-      export AIVEN_USERNAME
-      AIVEN_PASSWORD=bar
-      export AIVEN_PASSWORD
-      AIVEN_CLOUD=aws-eu-west-1
-      export AIVEN_CLOUD
+      export DEPLOY_ENV=test
+      export BROKER_NAME=integration_concourse
+      export AIVEN_USERNAME=foo
+      export AIVEN_PASSWORD=bar
+      export AIVEN_CLOUD=aws-eu-west-1
 
       cd repo
+
+      if [ -f ".git/resource/metadata.json" ]; then
+        pull_request=$(jq -r '.[] | select(.name=="pr") | .value' .git/resource/metadata.json)
+        commit=$(jq -r '.[] | select(.name=="head_sha") | .value' .git/resource/metadata.json | head -c7)
+        export BROKER_NAME=integration_concourse_pr${pull_request}_${commit}
+      fi
+
+      echo "BROKER_NAME: '${BROKER_NAME}'"
+
       make integration
