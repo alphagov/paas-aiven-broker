@@ -12,7 +12,7 @@ import (
 	"code.cloudfoundry.org/lager"
 )
 
-//go:generate counterfeiter -o fakes/fake_client.go . Client
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_client.go . Client
 type Client interface {
 	CreateService(params *CreateServiceInput) (string, error)
 	GetService(params *GetServiceInput) (*Service, error)

@@ -1,10 +1,10 @@
 ---
 platform: linux
 image_resource:
-  type: docker-image
+  type: registry-image
   source:
     repository: ghcr.io/alphagov/paas/cf-acceptance-tests
-    tag: 85eda8449b6703ffa204d10ac5807749fa413fdd-ginkgo-v2
+    tag: ecdcea170f3b23f277b61041c2f870df5f71c7fd
 inputs:
   - name: repo
 params:
@@ -16,18 +16,20 @@ run:
     - -e
     - -c
     - |
-      DEPLOY_ENV=test
-      export DEPLOY_ENV
-      BROKER_NAME=test-broker
-      export BROKER_NAME
-      AIVEN_USERNAME=foo
-      export AIVEN_USERNAME
-      AIVEN_PASSWORD=bar
-      export AIVEN_PASSWORD
-      AIVEN_CLOUD=aws-eu-west-1
-      export AIVEN_CLOUD
+      export DEPLOY_ENV=test
+      export BROKER_NAME=integration_concourse
+      export AIVEN_USERNAME=foo
+      export AIVEN_PASSWORD=bar
+      export AIVEN_CLOUD=aws-eu-west-1
 
-      mkdir -p "${GOPATH}/src/github.com/alphagov/paas-aiven-broker"
-      rsync -az repo/ "${GOPATH}/src/github.com/alphagov/paas-aiven-broker/"
-      cd "${GOPATH}/src/github.com/alphagov/paas-aiven-broker"
+      cd repo
+
+      if [ -f ".git/resource/metadata.json" ]; then
+        pull_request=$(jq -r '.[] | select(.name=="pr") | .value' .git/resource/metadata.json)
+        commit=$(jq -r '.[] | select(.name=="head_sha") | .value' .git/resource/metadata.json | head -c7)
+        export BROKER_NAME=integration_concourse_pr${pull_request}_${commit}
+      fi
+
+      echo "BROKER_NAME: '${BROKER_NAME}'"
+
       make integration

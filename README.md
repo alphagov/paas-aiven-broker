@@ -18,13 +18,23 @@ go run main.go -config examples/config.json
 
 ## Testing
 
-For unit testing run:
+### Unit Testing
 
 ```bash
 make unit
 ```
 
-For integration testing you need to set environment variables (see [`provider/config.go`](https://github.com/alphagov/paas-aiven-broker/blob/main/provider/config.go#L70-L90) for details) and run:
+### Integration Testing
+
+Integration testing requires environment variables to be set (see [`provider/config.go`](https://github.com/alphagov/paas-aiven-broker/blob/main/provider/config.go#L70-L90) for details).
+
+There is a make target which creates a `.env` file with these credentials and runs with these:
+
+```bash
+make local_integration
+```
+
+Alternatively, export these manually and run:
 
 ```bash
 make integration
