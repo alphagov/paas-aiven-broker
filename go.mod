@@ -1,6 +1,6 @@
 module github.com/alphagov/paas-aiven-broker
 
-go 1.22.0
+go 1.23
 
 toolchain go1.23.5
 
@@ -24,7 +24,10 @@ require (
 
 require github.com/onsi/ginkgo v1.16.5 // indirect
 
-require github.com/maxbrunsfeld/counterfeiter/v6 v6.6.1
+require (
+	github.com/maxbrunsfeld/counterfeiter/v6 v6.9.0
+	github.com/pivotal-cf/brokerapi/v12 v12.0.1
+)
 
 require (
 	code.cloudfoundry.org/lager v2.0.0+incompatible // indirect
@@ -33,7 +36,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20250208200701-d0013a598941 // indirect
-	github.com/google/uuid v1.0.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect

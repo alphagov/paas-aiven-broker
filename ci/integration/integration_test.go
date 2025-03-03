@@ -15,8 +15,8 @@ import (
 	brokertesting "github.com/alphagov/paas-aiven-broker/broker/testing"
 	"github.com/alphagov/paas-aiven-broker/client/opensearch"
 	"github.com/alphagov/paas-aiven-broker/provider"
-	"github.com/pivotal-cf/brokerapi"
-	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"github.com/pivotal-cf/brokerapi/v12"
+	"github.com/pivotal-cf/brokerapi/v12/domain/apiresponses"
 	uuid "github.com/satori/go.uuid"
 
 	. "github.com/onsi/ginkgo/v2"
