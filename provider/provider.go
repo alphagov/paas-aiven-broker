@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/alphagov/paas-aiven-broker/client/influxdb"
 	"github.com/alphagov/paas-aiven-broker/client/opensearch"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"

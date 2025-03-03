@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
 
 	. "github.com/onsi/ginkgo/v2"

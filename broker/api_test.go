@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	. "github.com/alphagov/paas-aiven-broker/broker"
 	broker_tester "github.com/alphagov/paas-aiven-broker/broker/testing"
 	"github.com/alphagov/paas-aiven-broker/provider/fakes"

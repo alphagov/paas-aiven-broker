@@ -8,7 +8,7 @@ import (
 	"github.com/pivotal-cf/brokerapi/domain"
 	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	. "github.com/alphagov/paas-aiven-broker/broker"
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/alphagov/paas-aiven-broker/provider/fakes"

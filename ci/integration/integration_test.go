@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	broker "github.com/alphagov/paas-aiven-broker/broker"
 	brokertesting "github.com/alphagov/paas-aiven-broker/broker/testing"
 	"github.com/alphagov/paas-aiven-broker/client/opensearch"
