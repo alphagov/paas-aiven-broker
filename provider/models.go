@@ -3,7 +3,7 @@ package provider
 import (
 	"encoding/json"
 
-	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/v12/domain"
 )
 
 type ProvisionData struct {

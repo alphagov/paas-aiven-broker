@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	"github.com/alphagov/paas-aiven-broker/provider"
-	"github.com/pivotal-cf/brokerapi/domain"
-	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"github.com/pivotal-cf/brokerapi/v12/domain"
+	"github.com/pivotal-cf/brokerapi/v12/domain/apiresponses"
 )
 
 type Broker struct {
@@ -25,11 +25,11 @@ func New(config Config, serviceProvider provider.ServiceProvider, logger lager.L
 	}
 }
 
-func (b *Broker) GetBinding(ctx context.Context, first, second string) (domain.GetBindingSpec, error) {
+func (b *Broker) GetBinding(ctx context.Context, first, second string, _ domain.FetchBindingDetails) (domain.GetBindingSpec, error) {
 	return domain.GetBindingSpec{}, fmt.Errorf("GetBinding method not implemented")
 }
 
-func (b *Broker) GetInstance(ctx context.Context, first string) (domain.GetInstanceDetailsSpec, error) {
+func (b *Broker) GetInstance(ctx context.Context, first string, _ domain.FetchInstanceDetails) (domain.GetInstanceDetailsSpec, error) {
 	return domain.GetInstanceDetailsSpec{}, fmt.Errorf("GetInstance method not implemented")
 }
 

@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"strings"
 
-	"code.cloudfoundry.org/lager"
-	"github.com/pivotal-cf/brokerapi/domain"
-	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
+	"code.cloudfoundry.org/lager/v3"
+	"github.com/pivotal-cf/brokerapi/v12/domain"
+	"github.com/pivotal-cf/brokerapi/v12/domain/apiresponses"
 )
 
 const (

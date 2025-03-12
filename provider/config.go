@@ -7,7 +7,7 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/v12/domain"
 )
 
 type Config struct {
