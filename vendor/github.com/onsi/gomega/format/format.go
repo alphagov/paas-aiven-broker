@@ -259,10 +259,10 @@ func Object(object interface{}, indentation uint) string {
 	indent := strings.Repeat(Indent, int(indentation))
 	value := reflect.ValueOf(object)
 	commonRepresentation := ""
-	if err, ok := object.(error); ok && !isNilValue(value) { // isNilValue check needed here to avoid nil deref due to boxed nil
-		commonRepresentation += "\n" + IndentString(err.Error(), indentation) + "\n" + indent
+	if err, ok := object.(error); ok {
+		commonRepresentation += "\n" + IndentString(err.Error(), indentation)
 	}
-	return fmt.Sprintf("%s<%s>: %s%s", indent, formatType(value), commonRepresentation, formatValue(value, indentation))
+	return fmt.Sprintf("%s<%s>: %s%s", indent, formatType(value), formatValue(value, indentation), commonRepresentation)
 }
 
 /*
@@ -302,7 +302,7 @@ func formatType(v reflect.Value) string {
 	case reflect.Map:
 		return fmt.Sprintf("%s | len:%d", v.Type(), v.Len())
 	default:
-		return v.Type().String()
+		return fmt.Sprintf("%s", v.Type())
 	}
 }
 

@@ -1,11 +1,11 @@
 package broker
 
 import (
-	"github.com/pivotal-cf/brokerapi/v12/domain"
+	"github.com/pivotal-cf/brokerapi/domain"
 	"net/http"
-	"log/slog"
-	"code.cloudfoundry.org/lager/v3"
-	"github.com/pivotal-cf/brokerapi/v12"
+
+	"code.cloudfoundry.org/lager"
+	"github.com/pivotal-cf/brokerapi"
 )
 
 func NewAPI(broker domain.ServiceBroker, logger lager.Logger, config Config) http.Handler {
@@ -14,7 +14,7 @@ func NewAPI(broker domain.ServiceBroker, logger lager.Logger, config Config) htt
 		Password: config.API.BasicAuthPassword,
 	}
 
-	brokerAPI := brokerapi.New(broker, slog.New(lager.NewHandler(logger)), credentials)
+	brokerAPI := brokerapi.New(broker, logger, credentials)
 	mux := http.NewServeMux()
 	mux.Handle("/", brokerAPI)
 	mux.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {

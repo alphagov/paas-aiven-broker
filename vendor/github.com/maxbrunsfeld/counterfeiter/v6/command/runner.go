@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"go/build"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -73,7 +74,7 @@ func generateModeInvocations(cwd string) ([]Invocation, error) {
 }
 
 func invocationsInFile(dir string, file string) ([]Invocation, error) {
-	str, err := os.ReadFile(filepath.Join(dir, file))
+	str, err := ioutil.ReadFile(filepath.Join(dir, file))
 	if err != nil {
 		return nil, err
 	}

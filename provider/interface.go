@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
-	"github.com/pivotal-cf/brokerapi/v12/domain"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o fakes/fake_service_provider.go . ServiceProvider

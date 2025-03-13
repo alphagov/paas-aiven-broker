@@ -78,11 +78,16 @@ example, to process each anchor node in depth-first order:
 	if err != nil {
 		// ...
 	}
-	for n := range doc.Descendants() {
+	var f func(*html.Node)
+	f = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			// Do something with n...
 		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
 	}
+	f(doc)
 
 The relevant specifications include:
 https://html.spec.whatwg.org/multipage/syntax.html and
@@ -94,20 +99,14 @@ Care should be taken when parsing and interpreting HTML, whether full documents
 or fragments, within the framework of the HTML specification, especially with
 regard to untrusted inputs.
 
-This package provides both a tokenizer and a parser, which implement the
-tokenization, and tokenization and tree construction stages of the WHATWG HTML
-parsing specification respectively. While the tokenizer parses and normalizes
-individual HTML tokens, only the parser constructs the DOM tree from the
-tokenized HTML, as described in the tree construction stage of the
-specification, dynamically modifying or extending the document's DOM tree.
+This package provides both a tokenizer and a parser. Only the parser constructs
+a DOM according to the HTML specification, resolving malformed and misplaced
+tags where appropriate. The tokenizer simply tokenizes the HTML presented to it,
+and as such does not resolve issues that may exist in the processed HTML,
+producing a literal interpretation of the input.
 
-If your use case requires semantically well-formed HTML documents, as defined by
-the WHATWG specification, the parser should be used rather than the tokenizer.
-
-In security contexts, if trust decisions are being made using the tokenized or
-parsed content, the input must be re-serialized (for instance by using Render or
-Token.String) in order for those trust decisions to hold, as the process of
-tokenization or parsing may alter the content.
+If your use case requires semantically well-formed HTML, as defined by the
+WHATWG specifiction, the parser should be used rather than the tokenizer.
 */
 package html // import "golang.org/x/net/html"
 

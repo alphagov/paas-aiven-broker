@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"net/url"
 
-	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager"
 	. "github.com/alphagov/paas-aiven-broker/broker"
 	broker_tester "github.com/alphagov/paas-aiven-broker/broker/testing"
 	"github.com/alphagov/paas-aiven-broker/provider/fakes"
-	"github.com/pivotal-cf/brokerapi/v12"
-	"github.com/pivotal-cf/brokerapi/v12/domain"
-	"github.com/pivotal-cf/brokerapi/v12/domain/apiresponses"
+	"github.com/pivotal-cf/brokerapi"
+	"github.com/pivotal-cf/brokerapi/domain"
+	"github.com/pivotal-cf/brokerapi/domain/apiresponses"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
