@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager"
 
 	"github.com/alphagov/paas-aiven-broker/broker"
 	"github.com/alphagov/paas-aiven-broker/provider"

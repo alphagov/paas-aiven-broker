@@ -8,6 +8,7 @@ import (
 	"go/ast"
 	"go/types"
 
+	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/internal/typeparams"
 )
 
@@ -16,12 +17,12 @@ import (
 //
 // Functions and methods may potentially have type parameters.
 func Callee(info *types.Info, call *ast.CallExpr) types.Object {
-	fun := ast.Unparen(call.Fun)
+	fun := astutil.Unparen(call.Fun)
 
 	// Look through type instantiation if necessary.
 	isInstance := false
 	switch fun.(type) {
-	case *ast.IndexExpr, *ast.IndexListExpr:
+	case *ast.IndexExpr, *typeparams.IndexListExpr:
 		// When extracting the callee from an *IndexExpr, we need to check that
 		// it is a *types.Func and not a *types.Var.
 		// Example: Don't match a slice m within the expression `m[0]()`.

@@ -63,7 +63,7 @@ func (p Params) AsArgs() string {
 }
 
 // AsNamedArgsWithTypes builds a string that represents parameters as named
-// arguments to a function, with associated types.
+// arugments to a function, with associated types.
 func (p Params) AsNamedArgsWithTypes() string {
 	if len(p) == 0 {
 		return ""

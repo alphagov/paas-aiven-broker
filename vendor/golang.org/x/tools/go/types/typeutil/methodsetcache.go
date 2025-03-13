@@ -32,12 +32,12 @@ func (cache *MethodSetCache) MethodSet(T types.Type) *types.MethodSet {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	switch T := types.Unalias(T).(type) {
+	switch T := T.(type) {
 	case *types.Named:
 		return cache.lookupNamed(T).value
 
 	case *types.Pointer:
-		if N, ok := types.Unalias(T.Elem()).(*types.Named); ok {
+		if N, ok := T.Elem().(*types.Named); ok {
 			return cache.lookupNamed(N).pointer
 		}
 	}

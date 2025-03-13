@@ -2,7 +2,7 @@ package provider
 
 import (
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
-	"github.com/pivotal-cf/brokerapi/v12"
+	"github.com/pivotal-cf/brokerapi"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

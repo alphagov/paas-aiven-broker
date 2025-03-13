@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/pivotal-cf/brokerapi/v12"
+	"github.com/pivotal-cf/brokerapi"
 )
 
 type BrokerTester struct {

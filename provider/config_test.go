@@ -7,7 +7,7 @@ import (
 	"github.com/alphagov/paas-aiven-broker/provider"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf/brokerapi/v12/domain"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 var _ = Describe("Config", func() {

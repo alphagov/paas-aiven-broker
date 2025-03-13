@@ -11,6 +11,8 @@ import (
 	"go/ast"
 	"go/token"
 	"sort"
+
+	"golang.org/x/tools/internal/typeparams"
 )
 
 // PathEnclosingInterval returns the node that encloses the source
@@ -106,21 +108,8 @@ func PathEnclosingInterval(root *ast.File, start, end token.Pos) (path []ast.Nod
 
 			// Does augmented child strictly contain [start, end)?
 			if augPos <= start && end <= augEnd {
-				if is[tokenNode](child) {
-					return true
-				}
-
-				// childrenOf elides the FuncType node beneath FuncDecl.
-				// Add it back here for TypeParams, Params, Results,
-				// all FieldLists). But we don't add it back for the "func" token
-				// even though it is is the tree at FuncDecl.Type.Func.
-				if decl, ok := node.(*ast.FuncDecl); ok {
-					if fields, ok := child.(*ast.FieldList); ok && fields != decl.Recv {
-						path = append(path, decl.Type)
-					}
-				}
-
-				return visit(child)
+				_, isToken := child.(tokenNode)
+				return isToken || visit(child)
 			}
 
 			// Does [start, end) overlap multiple children?
@@ -326,8 +315,6 @@ func childrenOf(n ast.Node) []ast.Node {
 		//
 		// As a workaround, we inline the case for FuncType
 		// here and order things correctly.
-		// We also need to insert the elided FuncType just
-		// before the 'visit' recursion.
 		//
 		children = nil // discard ast.Walk(FuncDecl) info subtrees
 		children = append(children, tok(n.Type.Func, len("func")))
@@ -335,7 +322,7 @@ func childrenOf(n ast.Node) []ast.Node {
 			children = append(children, n.Recv)
 		}
 		children = append(children, n.Name)
-		if tparams := n.Type.TypeParams; tparams != nil {
+		if tparams := typeparams.ForFuncType(n.Type); tparams != nil {
 			children = append(children, tparams)
 		}
 		if n.Type.Params != nil {
@@ -390,7 +377,7 @@ func childrenOf(n ast.Node) []ast.Node {
 			tok(n.Lbrack, len("[")),
 			tok(n.Rbrack, len("]")))
 
-	case *ast.IndexListExpr:
+	case *typeparams.IndexListExpr:
 		children = append(children,
 			tok(n.Lbrack, len("[")),
 			tok(n.Rbrack, len("]")))
@@ -601,7 +588,7 @@ func NodeDescription(n ast.Node) string {
 		return "decrement statement"
 	case *ast.IndexExpr:
 		return "index expression"
-	case *ast.IndexListExpr:
+	case *typeparams.IndexListExpr:
 		return "index list expression"
 	case *ast.InterfaceType:
 		return "interface type"
@@ -646,9 +633,4 @@ func NodeDescription(n ast.Node) string {
 
 	}
 	panic(fmt.Sprintf("unexpected node type: %T", n))
-}
-
-func is[T any](x any) bool {
-	_, ok := x.(T)
-	return ok
 }

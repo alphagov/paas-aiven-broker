@@ -7,7 +7,7 @@ import (
 
 	"github.com/alphagov/paas-aiven-broker/provider"
 	"github.com/alphagov/paas-aiven-broker/provider/aiven"
-	"github.com/pivotal-cf/brokerapi/v12/domain"
+	"github.com/pivotal-cf/brokerapi/domain"
 )
 
 type FakeServiceProvider struct {
