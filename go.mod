@@ -1,6 +1,6 @@
 module github.com/alphagov/paas-aiven-broker
 
-go 1.23
+go 1.22
 
 require (
 	code.cloudfoundry.org/lager v1.1.0
