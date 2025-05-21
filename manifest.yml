@@ -2,6 +2,7 @@
 applications:
   - name: aiven-broker
     memory: 128M
+    stack: cflinuxfs4
     instances: 2
     buildpack: go_buildpack
     env:
