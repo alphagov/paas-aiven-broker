@@ -6,5 +6,5 @@ applications:
     instances: 2
     buildpack: go_buildpack
     env:
-      GOVERSION: go1.22
+      GOVERSION: go1.23
       GOPACKAGENAME: github.com/alphagov/paas-aiven-broker
